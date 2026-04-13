@@ -1,0 +1,36 @@
+// This is your Database Schema
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  username         String   @unique
+  passwordHash     String
+  isVerifiedStudent Boolean @default(false)
+  collegeName      String?
+  studentIdCardUrl String?
+  baseLat          Float
+  baseLong         Float
+  role             String   // "individual" or "agency_member"
+  
+  // Agency logic
+  agencyId         String?
+  agency           Agency?  @relation(fields: [agencyId], references: [id])
+  isAgencyLeader   Boolean  @default(false)
+}
+
+model Agency {
+  id            String   @id @default(uuid())
+  name          String
+  leaderId      String   @unique
+  members       User[]
+  radiusKm      Int      // 25 or 35 based on your logic
+  bankAccountInfo String
+}
