@@ -1,36 +1,54 @@
-// This is your Database Schema
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your starter schema for LocalGigs
 
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id               String   @id @default(uuid())
-  email            String   @unique
-  username         String   @unique
-  passwordHash     String
-  isVerifiedStudent Boolean @default(false)
-  collegeName      String?
-  studentIdCardUrl String?
-  baseLat          Float
-  baseLong         Float
-  role             String   // "individual" or "agency_member"
-  
-  // Agency logic
-  agencyId         String?
-  agency           Agency?  @relation(fields: [agencyId], references: [id])
-  isAgencyLeader   Boolean  @default(false)
+datasource db {
+  provider = "postgresql"
 }
 
-model Agency {
-  id            String   @id @default(uuid())
-  name          String
-  leaderId      String   @unique
-  members       User[]
-  radiusKm      Int      // 25 or 35 based on your logic
-  bankAccountInfo String
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  image         String?
+  role          Role      @default(USER)
+  gigs          Gig[]     // Gigs created by this user
+  applications  Application[]
+  createdAt     DateTime  @default(now())
+}
+
+model Gig {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String   // You can later upgrade this to a JSON type for coordinates
+  pay         Float?
+  status      String   @default("open") // open, filled, completed
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  applications Application[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Application {
+  id        String   @id @default(cuid())
+  gigId     String
+  userId    String
+  status    String   @default("pending") // pending, accepted, rejected
+  
+  gig       Gig      @relation(fields: [gigId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([gigId, userId]) // Prevents a user from applying to the same gig twice
+}
+
+enum Role {
+  USER
+  ADMIN
 }
