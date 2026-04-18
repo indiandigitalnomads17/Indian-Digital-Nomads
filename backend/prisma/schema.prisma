@@ -31,7 +31,6 @@ enum ProposalStatus {
   WITHDRAWN
 }
 
-// --- Models ---
 
 model User {
   id            String    @id @default(uuid())
@@ -62,10 +61,14 @@ model Profile {
   profilePicLink String?
   videoLink      String?
   
-  // Geolocation
+  // location
   location       String?
   latitude       Float?
   longitude      Float?
+
+  isHourly        Boolean   @default(false)
+  hourlyRate      Decimal?  @db.Decimal(10, 2)
+  preferredJobType JobType  @default(FIXED_PRICE)
   
   projects       Project[]
   skills         Skill[]   @relation("ProfileSkills")
@@ -81,7 +84,7 @@ model Project {
   projectUrl  String?   
   videoUrl    String?   
   
-  // NEW: A project can have many screenshots
+  // A project can have many screenshots
   images      ProjectImage[] 
   
   skillsUsed  Skill[]        @relation("ProjectSkills")
@@ -126,6 +129,9 @@ model Job {
   skillsRequired Skill[]    @relation("JobSkills")
   reviews        Review[]
   
+  videoUrl        String?     // Video explainer
+  images          JobImage[]  // Reference photos/sketches
+
   createdAt      DateTime  @default(now())
 }
 
@@ -184,4 +190,12 @@ model Session {
   expiresAt DateTime @map("expire")
 
   @@map("Session")
+}
+
+model JobImage {
+  id        String   @id @default(uuid())
+  url       String
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
