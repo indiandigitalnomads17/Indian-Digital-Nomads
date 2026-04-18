@@ -1,27 +1,25 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import * as dotenv from 'dotenv';
-import prisma from './config/prisma';
-import gigRoutes from './routes/gigs';
+import dotenv from "dotenv"
+import {app} from '../src/app'
+import prisma from '../src/config/prisma'
+dotenv.config({
+    path: './.env'
+})
 
-dotenv.config();
+prisma.$connect()
+.then(() => {
+    app.listen(process.env.PORT || 8000, () => {
+    console.log(`⚙️ Server is running at port : ${process.env.PORT}`);
+    })
+}).catch((err) => {
+    console.log("db connection failed !!! ", err);
+})
 
-const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
 
-// Routes
-app.use('/api/gigs', gigRoutes);
 
-// Health Check
-app.get('/ping', (req: Request, res: Response) => {
-  res.send('pong 🏓');
-});
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 LocalGigs Server running on http://localhost:${PORT}`);
-});
+
+
+
+
+
