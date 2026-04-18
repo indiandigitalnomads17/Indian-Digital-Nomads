@@ -1,3 +1,7 @@
+Run this command to initialize skills in the backend: 
+
+      npx ts-node prisma/seed.ts
+
 # 🚀 LocalGigs: Hyperlocal Student Freelancing Marketplace
 
 LocalGigs is a hyperlocal freelancing platform built specifically for **college students**. It connects local clients with verified student talent through a tiered agency system, unlimited video discovery, and a secure, phase-based payment structure.
