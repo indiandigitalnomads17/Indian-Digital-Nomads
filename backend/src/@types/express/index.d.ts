@@ -1,21 +1,26 @@
 import "express-session";
+import { UserRole } from "@prisma/client";
+
 
 declare module "express-session" {
   interface SessionData {
     user: {
       id: string;
-      role: "CLIENT" | "FREELANCER" | "ADMIN";
+      email: string;
+      role: string;
     };
   }
 }
-s
+
+
 declare global {
   namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        role: "CLIENT" | "FREELANCER" | "ADMIN";
-      };
+    
+    interface User {
+      id: string;
+      email: string;
+      role: UserRole; 
+      fullName?: string;
     }
   }
 }

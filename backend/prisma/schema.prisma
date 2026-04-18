@@ -179,8 +179,9 @@ model Review {
 }
 
 model Session {
-  id        String   @id
-  sid       String   @unique
-  data      String   // This stores the stringified session data
-  expiresAt DateTime
+  id        String   @id @map("sid")
+  data      String   @map("sess") @db.Text
+  expiresAt DateTime @map("expire")
+
+  @@map("Session")
 }

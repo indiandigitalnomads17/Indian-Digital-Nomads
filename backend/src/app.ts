@@ -1,8 +1,13 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import session from "express-session"; // ADD THIS
-const pgSession = require("connect-pg-simple")(session); // ADD THIS
+import session from "express-session";
+import passport from "passport"; // 
+import "./config/passport";    
+import googleAuthRouter from "./routes/googleauth.route"; // Your new file
+import userRoutes from "./routes/User.router";            // Traditional signup/login
+
+const pgSession = require("connect-pg-simple")(session);
 
 const app = express();
 
@@ -37,5 +42,13 @@ app.use(
     },
   })
 );
+
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+app.use("/api/auth/google", googleAuthRouter); 
+app.use("/api/v1/user", userRoutes);
 
 export { app };
