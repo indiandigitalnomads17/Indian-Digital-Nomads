@@ -4,8 +4,12 @@ import cookieParser from "cookie-parser";
 import session from "express-session";
 import passport from "passport"; // 
 import "./config/passport";    
-import googleAuthRouter from "./routes/googleauth.route"; // Your new file
-import userRoutes from "./routes/User.router";            // Traditional signup/login
+import googleAuthRouter from "./routes/googleauth.route"; 
+import userRoutes from "./routes/User.router";    
+import freelancerRoutes from "./routes/freelancer.routes";
+import skillRoutes from "./routes/skill.routes";
+
+
 
 const pgSession = require("connect-pg-simple")(session);
 
@@ -50,5 +54,8 @@ app.use(passport.session());
 
 app.use("/api/auth/google", googleAuthRouter); 
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/freelancer", freelancerRoutes);
+app.use("/api/v1/skills", skillRoutes);
 
 export { app };
+
