@@ -34,6 +34,9 @@ CREATE TABLE "Profile" (
     "location" TEXT,
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
+    "isHourly" BOOLEAN NOT NULL DEFAULT false,
+    "hourlyRate" DECIMAL(10,2),
+    "preferredJobType" "JobType" NOT NULL DEFAULT 'FIXED_PRICE',
 
     CONSTRAINT "Profile_pkey" PRIMARY KEY ("id")
 );
@@ -76,6 +79,7 @@ CREATE TABLE "Job" (
     "longitude" DOUBLE PRECISION,
     "clientId" TEXT NOT NULL,
     "freelancerId" TEXT,
+    "videoUrl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Job_pkey" PRIMARY KEY ("id")
@@ -119,12 +123,34 @@ CREATE TABLE "Review" (
 
 -- CreateTable
 CREATE TABLE "Session" (
-    "id" TEXT NOT NULL,
     "sid" TEXT NOT NULL,
-    "data" TEXT NOT NULL,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "sess" TEXT NOT NULL,
+    "expire" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("sid")
+);
+
+-- CreateTable
+CREATE TABLE "JobImage" (
+    "id" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "jobId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "JobImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "link" TEXT,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -167,9 +193,6 @@ CREATE UNIQUE INDEX "Proposal_jobId_freelancerId_key" ON "Proposal"("jobId", "fr
 CREATE UNIQUE INDEX "Skill_name_key" ON "Skill"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Session_sid_key" ON "Session"("sid");
-
--- CreateIndex
 CREATE INDEX "_ProfileSkills_B_index" ON "_ProfileSkills"("B");
 
 -- CreateIndex
@@ -210,6 +233,12 @@ ALTER TABLE "Review" ADD CONSTRAINT "Review_reviewerId_fkey" FOREIGN KEY ("revie
 
 -- AddForeignKey
 ALTER TABLE "Review" ADD CONSTRAINT "Review_revieweeId_fkey" FOREIGN KEY ("revieweeId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "JobImage" ADD CONSTRAINT "JobImage_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_ProfileSkills" ADD CONSTRAINT "_ProfileSkills_A_fkey" FOREIGN KEY ("A") REFERENCES "Profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;

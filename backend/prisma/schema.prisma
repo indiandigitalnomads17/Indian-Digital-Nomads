@@ -50,6 +50,8 @@ model User {
   
   reviewsSent      Review[]   @relation("ReviewsSent")
   reviewsRec       Review[]   @relation("ReviewsReceived")
+
+  notifications    Notification[]
 }
 
 model Profile {
@@ -199,3 +201,17 @@ model JobImage {
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      String   
+  message   String
+  link      String?  
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+}
+

@@ -1,28 +1,26 @@
 import { Router } from "express";
 import passport from "passport";
+import prisma from "../config/prisma";
+import { User as PrismaUser } from "@prisma/client";
 
 const router = Router();
-
-router.get("/", (req, res, next) => {
-  const { role } = req.query;
-  
-  const state = role 
-    ? Buffer.from(JSON.stringify({ role })).toString('base64') 
-    : undefined;
-
-  passport.authenticate("google", { 
-    scope: ["profile", "email"],
-    state: state 
-  })(req, res, next);
-});
-
 
 router.get(
   "/callback",
   passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
-    
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  async (req, res) => {
+    const user = req.user as PrismaUser;
+    const role = user.role.toLowerCase();
+
+    const profile = await prisma.profile.findUnique({
+      where: { userId: user.id }
+    });
+
+    if (!profile?.bio) {
+      return res.redirect(`${process.env.FRONTEND_URL}/${role}/onboarding`);
+    }
+
+    res.redirect(`${process.env.FRONTEND_URL}/${role}/dashboard`);
   }
 );
 
