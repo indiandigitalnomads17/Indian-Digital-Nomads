@@ -3,7 +3,7 @@ import { addProject, onboardFreelancer , getPrivateFreelancerProfile} from "../c
 import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
-
+import {submitProposal} from  "../controllers/proposal.controller"
 const router = Router();
 
 router.patch(
@@ -29,6 +29,8 @@ router.post(
 );
 
 router.get("/get-profile-data", protect, authorize("FREELANCER"), getPrivateFreelancerProfile);
+
+router.post("/send-propsal",protect, authorize("FREELANCER"),submitProposal);
 
 
 export default router;

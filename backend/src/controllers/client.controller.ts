@@ -4,13 +4,14 @@ import { uploadOnCloudinary } from "../config/cloudinary";
 import { clientOnboardingSchema } from "../validations/cleint.schema";
 import { User as PrismaUser } from "@prisma/client";
 import { postJobSchema } from "../validations/job.schema";
+import { getQualifiedFreelancers } from "../services/matcher.service";
+import { notifyNomad } from "../services/notification.service";
 
 export const onboardClient = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // 1. Validate Text Input (Ensure phoneNumber is in your Zod schema)
     const validation = clientOnboardingSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ errors: validation.error.format() });
@@ -18,7 +19,7 @@ export const onboardClient = async (req: Request, res: Response) => {
 
     const { bio, location, latitude, longitude, phoneNumber } = validation.data;
 
-    // 2. Handle Media Uploads
+
     let logoUrl = undefined;
     if (files?.companyLogo?.[0]) {
       const uploadResult = await uploadOnCloudinary(files.companyLogo[0].path);
@@ -68,7 +69,7 @@ export const onboardClient = async (req: Request, res: Response) => {
 };
 
 export const getPrivateClientProfile = async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = (req.user as any)?.id;
 
   const clientData = await prisma.user.findUnique({
     where: { id: userId },
@@ -79,7 +80,6 @@ export const getPrivateClientProfile = async (req: Request, res: Response) => {
       role: true,
       createdAt: true,
       profile: true, 
-      // Stats for the dashboard
       _count: {
         select: {
           jobsAsClient: true,
@@ -112,7 +112,8 @@ export const getPrivateClientProfile = async (req: Request, res: Response) => {
 
 export const createJob = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as PrismaUser)?.id;
+    const userId = (req.user as any)?.id;
+    // Map Multer files correctly
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     const validation = postJobSchema.safeParse(req.body);
@@ -125,50 +126,82 @@ export const createJob = async (req: Request, res: Response) => {
       location, latitude, longitude, skills 
     } = validation.data;
 
-
+    // 1. Process Images Array
     const jobImageUrls: string[] = [];
     if (files?.jobImages) {
-      for (const file of files.jobImages) {
-        const result = await uploadOnCloudinary(file.path);
-        if (result) jobImageUrls.push(result.secure_url);
-      }
+      // Use Promise.all for faster concurrent uploads
+      const uploadPromises = files.jobImages.map(file => uploadOnCloudinary(file.path));
+      const results = await Promise.all(uploadPromises);
+      
+      results.forEach(result => {
+        if (result?.secure_url) jobImageUrls.push(result.secure_url);
+      });
     }
 
     let briefVideoUrl: string | undefined;
     if (files?.briefVideo?.[0]) {
-      const result = await uploadOnCloudinary(files.briefVideo[0].path);
-      briefVideoUrl = result?.secure_url;
+      const videoResult = await uploadOnCloudinary(files.briefVideo[0].path);
+      briefVideoUrl = videoResult?.secure_url;
     }
 
+    // 3. Create Job with Relations
     const newJob = await prisma.job.create({
       data: {
         title,
         description,
-        type, // FIXED_PRICE or HOURLY
+        type,
         budget: budget ?? null,
         estimatedHours: estimatedHours ?? null,
         location,
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
         clientId: userId,
-        videoUrl: briefVideoUrl,
+        videoUrl: briefVideoUrl || null,
         images: {
           create: jobImageUrls.map(url => ({ url }))
         },
+        // Connect to existing skills by ID
         skillsRequired: {
-          connect: skills.map((id: string) => ({ id })),
+          connect: skills.map((id: string) => ({ id }))
         },
       },
       include: {
-        images: true,
-        skillsRequired: { select: { name: true } }
+        images: true, // This confirms they were saved in the response
+        skillsRequired: true
       }
     });
 
     res.status(201).json({ success: true, data: newJob });
 
+    // Background notifications (non-blocking)
+    (async () => {
+      try {
+        if (newJob.latitude && newJob.longitude) {
+          const qualifiedNomads = await getQualifiedFreelancers(
+            newJob.latitude, 
+            newJob.longitude, 
+            skills
+          );
+
+          for (const nomad of qualifiedNomads) {
+            await notifyNomad({
+              userId: nomad.userId,
+              type: "NEW_JOB",
+              message: `New High-Match Job: ${newJob.title}`,
+              link: `/jobs/${newJob.id}`
+            });
+          }
+        }
+      } catch (bgError) {
+        console.error("Notification Background Error:", bgError);
+      }
+    })();
+
   } catch (error) {
     console.error("Job Creation Error:", error);
-    res.status(500).json({ error: "Failed to post job" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error during job posting" });
+    }
   }
 };
+
