@@ -10,7 +10,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
-  name?: string;
+  fullName: string;
   [key: string]: unknown; // allow extra profile fields from backend
 }
 
@@ -18,29 +18,20 @@ export interface UseAuthReturn {
   user: AuthUser | null;
   loading: boolean;
   authenticated: boolean;
+  logout: () => Promise<void>;
 }
 
-// ─── Endpoint map ─────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const PROFILE_ENDPOINTS: Record<UserRole, string> = {
-  CLIENT: '/api/v1/user/get-profile-data',
-  FREELANCER: '/api/v1/freelancer/get-profile-data',
-};
+const ME_ENDPOINT = '/api/v1/user/me';
+const LOGOUT_ENDPOINT = '/api/v1/user/logout';
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
  * useAuth
  *
- * Fetches the current user's profile on mount.
- *
- * Strategy:
- *  1. Try the CLIENT endpoint first (most common role).
- *  2. If that returns 401, try the FREELANCER endpoint.
- *  3. If both fail with 401 (or any auth error), mark as unauthenticated.
- *
- * The axios instance already has `withCredentials: true` set globally in
- * @/lib/api, so session cookies are sent automatically.
+ * Fetches the current user's profile on mount and provides logout functionality.
  */
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -52,55 +43,49 @@ export function useAuth(): UseAuthReturn {
 
     async function fetchProfile() {
       setLoading(true);
+      try {
+        const response = await api.get<{ success: boolean; data: AuthUser }>(ME_ENDPOINT, {
+          withCredentials: true,
+        });
 
-      // Try CLIENT endpoint first, then fallback to FREELANCER.
-      const rolesToTry: UserRole[] = ['CLIENT', 'FREELANCER'];
+        if (cancelled) return;
 
-      for (const role of rolesToTry) {
-        try {
-          const { data } = await api.get<AuthUser>(PROFILE_ENDPOINTS[role], {
-            withCredentials: true,
-          });
-
-          if (cancelled) return;
-
-          setUser({ ...data, role });
+        if (response.data.success && response.data.data) {
+          setUser(response.data.data);
           setAuthenticated(true);
-          setLoading(false);
-          return; // success — stop trying further roles
-        } catch (error: unknown) {
-          const axiosError = error as {
-            response?: { status: number };
-            message?: string;
-          };
-
-          const status = axiosError?.response?.status;
-
-          // Only continue to the next role for auth errors (401 / 403).
-          // For any other error (network, 500, etc.) stop and mark as unauthenticated.
-          if (status !== 401 && status !== 403) {
-            break;
-          }
-          // status === 401/403 → try the next role in the list
+        } else {
+          setAuthenticated(false);
+          setUser(null);
         }
-      }
-
-      // Exhausted all roles without a successful response.
-      if (!cancelled) {
-        setUser(null);
+      } catch (err) {
+        if (cancelled) return;
         setAuthenticated(false);
-        setLoading(false);
+        setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchProfile();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  return { user, loading, authenticated };
+  const logout = async () => {
+    try {
+      await api.post(LOGOUT_ENDPOINT, {}, { withCredentials: true });
+      setUser(null);
+      setAuthenticated(false);
+      window.location.href = '/auth'; // Redirect to login page
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still clear local state as a fallback
+      setUser(null);
+      setAuthenticated(false);
+      window.location.href = '/auth';
+    }
+  };
+
+  return { user, loading, authenticated, logout };
 }
 
 export default useAuth;

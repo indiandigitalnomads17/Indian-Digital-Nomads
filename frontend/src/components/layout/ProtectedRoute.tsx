@@ -77,7 +77,7 @@ export default function ProtectedRoute({
     }
 
     if (requiredRole && user?.role !== requiredRole) {
-      // Role mismatch — send them back to auth (or a 403 page if you prefer)
+      console.warn(`[ProtectedRoute] Role mismatch: required ${requiredRole}, user has ${user?.role}. Redirecting to ${redirectPath}`);
       router.replace(redirectPath);
     }
   }, [loading, authenticated, user, requiredRole, redirectPath, router]);

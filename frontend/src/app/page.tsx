@@ -8,7 +8,7 @@ import Footer from '../components/Footer';
 
 const App = () => {
   return (
-    <div className="bg-surface text-on-surface font-body antialiased">
+    <div className="bg-background text-foreground font-body antialiased">
       <Navbar />
       <main>
         <Hero />

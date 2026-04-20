@@ -48,7 +48,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
-app.use("/api/v1/", dashboardRoutes);
 app.use("/api/auth/google", googleAuthRouter);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/freelancer", freelancerRoutes);

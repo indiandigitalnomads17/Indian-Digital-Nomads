@@ -64,10 +64,16 @@ export default function AuthPage() {
         : { email: formData.email, password: formData.password, fullName: formData.fullName, role };
 
       const response = await api.post(endpoint, payload);
-      const userRole: Role = response.data.user?.role || role;
+      const userRole: Role = response.data.user?.role;
 
-      if (userRole === 'CLIENT') router.push('/dashboard');
-      else router.push('/freelancer');
+      if (userRole === 'CLIENT') {
+        router.push('/dashboard');
+      } else if (userRole === 'FREELANCER') {
+        router.push('/freelancer');
+      } else {
+        // Fallback to state role if backend doesn't provide it
+        router.push(role === 'CLIENT' ? '/dashboard' : '/freelancer');
+      }
 
     } catch (err: any) {
       const { general, fields } = parseBackendError(err);

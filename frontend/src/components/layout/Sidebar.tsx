@@ -28,7 +28,7 @@ const Sidebar = () => {
   const links = isClient ? clientLinks : freelancerLinks;
 
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col gap-2 p-4 bg-slate-50 border-r border-slate-200/15 fixed left-0 top-0 overflow-y-auto pt-20">
+    <aside className="hidden md:flex h-screen w-64 flex-col gap-2 p-4 bg-slate-50 border-r border-slate-200/15 fixed left-0 top-0 overflow-y-auto pt-28">
       <div className="mb-8 px-2 flex items-center gap-3">
         <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>

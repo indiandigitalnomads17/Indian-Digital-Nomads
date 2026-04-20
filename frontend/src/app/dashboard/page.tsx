@@ -25,8 +25,8 @@ const BusinessDashboard = () => {
         {/* Special Blue Card (Unique) */}
         <div className="hidden lg:flex bg-primary-container text-white p-8 rounded-xl flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
-            <p className="text-primary-fixed-dim font-bold text-sm mb-1">Weekly Growth</p>
-            <h3 className="text-2xl font-bold tracking-tight font-headline">Expand Your Team</h3>
+            <p className="text-foreground font-bold  text-sm mb-1">Weekly Growth</p>
+            <h3 className="text-2xl text-foreground font-bold tracking-tight font-headline">Expand Your Team</h3>
           </div>
           <button className="relative z-10 w-fit bg-white text-primary px-4 py-2 rounded-lg font-bold text-sm">
             View Insights

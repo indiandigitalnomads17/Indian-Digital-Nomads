@@ -16,11 +16,8 @@ router.get(
       where: { userId: user.id }
     });
 
-    if (!profile?.bio) {
-      return res.redirect(`${process.env.FRONTEND_URL}/${role}/onboarding`);
-    }
-
-    res.redirect(`${process.env.FRONTEND_URL}/${role}/dashboard`);
+    const targetPath = user.role === 'CLIENT' ? '/dashboard' : '/freelancer';
+    res.redirect(`${process.env.FRONTEND_URL}${targetPath}`);
   }
 );
 

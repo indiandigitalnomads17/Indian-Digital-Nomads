@@ -8,7 +8,7 @@ const DashboardLayout = ({ children }) => {
     <div className="bg-surface text-on-surface min-h-screen font-body">
       <Navbar />
       <Sidebar />
-      <main className="md:ml-64 pt-24 px-8 pb-12">
+      <main className="md:ml-64 pt-32 px-8 pb-12">
         <div className="max-w-6xl mx-auto">
           {children}
         </div>
