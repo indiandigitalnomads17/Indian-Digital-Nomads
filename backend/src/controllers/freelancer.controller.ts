@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../config/prisma";
 import { uploadOnCloudinary } from "../config/cloudinary";
-import { User as PrismaUser } from "@prisma/client";
+import { User as PrismaUser, JobStatus, ProposalStatus } from "@prisma/client";
 import { freelancerOnboardingSchema } from "../validations/freelancer.schema";
 import { error } from "node:console";
 
@@ -24,6 +24,7 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
     // 2. Handle Media Uploads
     let profilePicUrl: string | undefined;
     let introVideoUrl: string | undefined;
+    let bannerUrl: string | undefined;
 
     if (files?.profilePic?.[0]) {
       const result = await uploadOnCloudinary(files.profilePic[0].path);
@@ -33,6 +34,11 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
     if (files?.introVideo?.[0]) {
       const result = await uploadOnCloudinary(files.introVideo[0].path);
       if (result) introVideoUrl = result.secure_url;
+    }
+
+    if (files?.banner?.[0]) {
+      const result = await uploadOnCloudinary(files.banner[0].path);
+      if (result) bannerUrl = result.secure_url;
     }
 
     // 3. Database Transaction
@@ -54,6 +60,7 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
           hourlyRate: hourlyRate ? Number(hourlyRate) : null,
           preferredJobType,
           profilePicLink: profilePicUrl || undefined,
+          bannerLink: bannerUrl || undefined,
           videoLink: introVideoUrl || undefined,
           skills: {
             set: [], 
@@ -93,6 +100,7 @@ export const getPrivateFreelancerProfile = async (req: Request, res: Response) =
             id: true,
             bio: true,
             profilePicLink: true,
+            bannerLink: true,
             videoLink: true,
             location: true,
             latitude: true,
@@ -234,5 +242,114 @@ export const addProject = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Add Project Error:", error);
     res.status(500).json({ error: "Failed to add project" });
+  }
+};
+
+export const getFreelancerDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [stats, monthlyJobs] = await prisma.$transaction([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          _count: {
+            select: {
+              jobsAsFreelancer: { where: { status: JobStatus.IN_PROGRESS } },
+              proposals: { where: { status: ProposalStatus.PENDING } }
+            }
+          }
+        }
+      }),
+      prisma.job.findMany({
+        where: {
+          freelancerId: userId,
+          status: JobStatus.COMPLETED,
+          createdAt: { gte: startOfMonth }
+        },
+        select: { budget: true }
+      })
+    ]);
+
+    const monthlyEarnings = monthlyJobs.reduce((acc, job) => acc + Number(job.budget || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        activeJobs: stats?._count.jobsAsFreelancer || 0,
+        pendingProposals: stats?._count.proposals || 0,
+        monthlyEarnings
+      }
+    });
+  } catch (error) {
+    console.error("Dashboard Stats Error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+};
+
+export const getRecommendedJobs = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+
+    // 1. Get user profile for location and skills
+    const userProfile = await prisma.profile.findUnique({
+      where: { userId },
+      include: { skills: { select: { id: true } } }
+    });
+
+    if (!userProfile || !userProfile.latitude || !userProfile.longitude) {
+      // If no location, just return recent open jobs
+      const recentJobs = await prisma.job.findMany({
+        where: { status: JobStatus.OPEN },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          client: { select: { fullName: true } },
+          skillsRequired: { select: { name: true } }
+        }
+      });
+      return res.status(200).json({ success: true, data: recentJobs });
+    }
+
+    const { latitude, longitude } = userProfile;
+    const skillIds = userProfile.skills.map(s => s.id);
+
+    // 2. Simple bounding box matching (reusing logic from matcher.service)
+    const RADIUS_KM = 50;
+    const degToKm = 111;
+
+    const recommendedJobs = await prisma.job.findMany({
+      where: {
+        status: JobStatus.OPEN,
+        latitude: {
+          gte: latitude - (RADIUS_KM / degToKm),
+          lte: latitude + (RADIUS_KM / degToKm)
+        },
+        longitude: {
+          gte: longitude - (RADIUS_KM / degToKm),
+          lte: longitude + (RADIUS_KM / degToKm)
+        }
+      },
+      include: {
+        client: { select: { fullName: true } },
+        skillsRequired: { select: { name: true } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20
+    });
+
+    // 3. Mark match level (rough heuristic)
+    const dataWithMatch = recommendedJobs.map(job => {
+      const matchCount = job.skillsRequired.filter(s => skillIds.includes((s as any).id)).length;
+      const matchPercent = skillIds.length > 0 ? (matchCount / job.skillsRequired.length) * 100 : 0;
+      return { ...job, matchPercent: Math.round(matchPercent) };
+    });
+
+    res.status(200).json({ success: true, data: dataWithMatch });
+  } catch (error) {
+    console.error("Recommended Jobs Error:", error);
+    res.status(500).json({ error: "Failed to fetch recommended jobs" });
   }
 };

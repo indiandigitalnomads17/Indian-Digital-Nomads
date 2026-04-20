@@ -1,23 +1,60 @@
-import React from 'react';
-import DashboardLayout from '../../components/layout/DashboardLayout'; // Reusing your existing layout
+"use client";
+import React, { useEffect, useState } from 'react';
+import DashboardLayout from '../../components/layout/DashboardLayout';
 import GigCard from '../../components/common/GigCard';
 import SpeedCallItem from '../../components/common/SpeedCallItem';
+import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
-const GIGS = [
-  { title: "React Developer for Startup", match: "98%", time: "2 HOURS AGO", dist: "1.2km away", price: "$150 - $300" },
-  { title: "Graphic Designer for Local Cafe", match: "92%", time: "5 HOURS AGO", dist: "3.5km away", price: "$50/hr" },
-];
-
-const URGENT_GIG = {
-  title: "UI/UX Consultant - Main St. Hub",
-  match: "99%",
-  time: "NEW",
-  dist: "0.5km away",
-  price: "$1,200 Fixed",
-  description: "Fast-growing coworking space needs a consultant for their redesign. Local presence preferred."
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  if (diffInHours < 1) return 'JUST NOW';
+  if (diffInHours === 1) return '1 HOUR AGO';
+  if (diffInHours < 24) return `${diffInHours} HOURS AGO`;
+  return `${Math.floor(diffInHours / 24)} DAYS AGO`;
 };
 
 const FreelancerDashboard = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ activeJobs: 0, pendingProposals: 0, monthlyEarnings: 0 });
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [statsRes, jobsRes] = await Promise.all([
+          api.get('/api/v1/freelancer/dashboard-stats'),
+          api.get('/api/v1/freelancer/recommendations')
+        ]);
+
+        if (statsRes.data.success) {
+          setStats(statsRes.data.data);
+        }
+        if (jobsRes.data.success) {
+          setJobs(jobsRes.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching freelancer dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const transformedJobs = jobs.map(job => ({
+    title: job.title,
+    match: job.matchPercent ? `${job.matchPercent}%` : "Match",
+    time: formatTimeAgo(job.createdAt),
+    dist: job.location || "Nearby",
+    price: job.budget ? `$${job.budget}` : "Flexible",
+    description: job.description
+  }));
+
   return (
     <DashboardLayout>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -38,12 +75,25 @@ const FreelancerDashboard = () => {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {GIGS.map((gig, idx) => (
-              <GigCard key={idx} data={gig} />
-            ))}
-            <GigCard data={URGENT_GIG} isUrgent />
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-64 bg-surface-container-low rounded-xl"></div>
+              ))}
+            </div>
+          ) : transformedJobs.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {transformedJobs.map((gig, idx) => (
+                <GigCard key={idx} data={gig} isUrgent={idx === 0} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-surface-container-low p-12 rounded-2xl text-center">
+              <span className="material-symbols-outlined text-6xl text-outline mb-4">search_off</span>
+              <h3 className="text-xl font-bold text-on-surface mb-2">No Gigs Found</h3>
+              <p className="text-on-surface-variant">Try expanding your search radius or updating your skills.</p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Metrics */}
@@ -68,7 +118,9 @@ const FreelancerDashboard = () => {
           <div className="bg-primary text-on-primary p-8 rounded-xl relative overflow-hidden">
             <div className="relative z-10">
               <h4 className="text-sm font-black uppercase tracking-widest text-on-primary/60 mb-1">Monthly Earnings</h4>
-              <div className="text-5xl font-black mb-6 tracking-tighter">$4,850.00</div>
+              <div className="text-5xl font-black mb-6 tracking-tighter">
+                ${stats.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </div>
               {/* Simplified Bar Chart visualization */}
               <div className="flex items-end gap-1 h-12">
                 {[40, 60, 50, 80, 90, 100, 30].map((h, i) => (

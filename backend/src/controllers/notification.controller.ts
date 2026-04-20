@@ -4,6 +4,9 @@ import prisma from "../config/prisma";
 export const getUserNotifications = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any)?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
 
     const notifications = await prisma.notification.findMany({
       where: { userId },
@@ -26,8 +29,12 @@ export const getUserNotifications = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error("Fetch Notifications Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error("Fetch Notifications Error Details:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 

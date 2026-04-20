@@ -20,6 +20,7 @@ const Sidebar = () => {
 
   const freelancerLinks = [
     { name: 'Dashboard', href: '/freelancer', icon: 'dashboard' },
+    { name: 'My Profile', href: '/freelancer/profile', icon: 'account_circle' },
     { name: 'My Applications', href: '/freelancer/applications', icon: 'assignment_turned_in' },
     { name: 'Messages', href: '/freelancer/messages', icon: 'forum' },
     { name: 'Earnings', href: '/freelancer/earnings', icon: 'payments' },

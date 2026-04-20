@@ -6,6 +6,152 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id               String         @id @default(uuid())
+  fullName         String
+  email            String         @unique
+  passwordHash     String?
+  googleId         String?        @unique
+  phoneNumber      String?
+  role             UserRole
+  createdAt        DateTime       @default(now())
+  jobsAsClient     Job[]          @relation("ClientJobs")
+  jobsAsFreelancer Job[]          @relation("FreelancerJobs")
+  notifications    Notification[]
+  profile          Profile?
+  proposals        Proposal[]     @relation("FreelancerProposals")
+  reviewsRec       Review[]       @relation("ReviewsReceived")
+  reviewsSent      Review[]       @relation("ReviewsSent")
+}
+
+model Profile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  bio              String?
+  profilePicLink   String?
+  bannerLink       String?
+  videoLink        String?
+  location         String?
+  latitude         Float?
+  longitude        Float?
+  hourlyRate       Decimal?  @db.Decimal(10, 2)
+  isHourly         Boolean   @default(false)
+  preferredJobType JobType   @default(FIXED_PRICE)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects         Project[]
+  skills           Skill[]   @relation("ProfileSkills")
+}
+
+model Project {
+  id          String         @id @default(uuid())
+  profileId   String
+  title       String
+  description String?
+  projectUrl  String?
+  videoUrl    String?
+  completedAt DateTime?
+  profile     Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  images      ProjectImage[]
+  skillsUsed  Skill[]        @relation("ProjectSkills")
+}
+
+model ProjectImage {
+  id        String   @id @default(uuid())
+  url       String
+  altText   String?
+  projectId String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id             String     @id @default(uuid())
+  title          String
+  description    String
+  status         JobStatus  @default(OPEN)
+  type           JobType    @default(FIXED_PRICE)
+  budget         Decimal?   @db.Decimal(10, 2)
+  estimatedHours Int?
+  location       String?
+  latitude       Float?
+  longitude      Float?
+  clientId       String
+  freelancerId   String?
+  createdAt      DateTime   @default(now())
+  videoUrl       String?
+  client         User       @relation("ClientJobs", fields: [clientId], references: [id], onDelete: Cascade)
+  freelancer     User?      @relation("FreelancerJobs", fields: [freelancerId], references: [id])
+  images         JobImage[]
+  proposals      Proposal[]
+  reviews        Review[]
+  skillsRequired Skill[]    @relation("JobSkills")
+}
+
+model Proposal {
+  id            String         @id @default(uuid())
+  coverLetter   String
+  bidAmount     Decimal        @db.Decimal(10, 2)
+  estimatedDays Int?
+  status        ProposalStatus @default(PENDING)
+  jobId         String
+  freelancerId  String
+  createdAt     DateTime       @default(now())
+  freelancer    User           @relation("FreelancerProposals", fields: [freelancerId], references: [id], onDelete: Cascade)
+  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, freelancerId])
+}
+
+model Skill {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  parentId  String?
+  parent    Skill?    @relation("SkillHierarchy", fields: [parentId], references: [id])
+  subSkills Skill[]   @relation("SkillHierarchy")
+  jobs      Job[]     @relation("JobSkills")
+  profiles  Profile[] @relation("ProfileSkills")
+  projects  Project[] @relation("ProjectSkills")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  jobId      String
+  reviewerId String
+  revieweeId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  job        Job      @relation(fields: [jobId], references: [id])
+  reviewee   User     @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+  reviewer   User     @relation("ReviewsSent", fields: [reviewerId], references: [id])
+}
+
+model Session {
+  id        String   @id @map("sid")
+  expiresAt DateTime @map("expire")
+  data      String   @map("sess")
+
+  @@map("Session")
+}
+
+model JobImage {
+  id        String   @id @default(uuid())
+  url       String
+  jobId     String
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
 enum UserRole {
   CLIENT
@@ -30,188 +176,3 @@ enum ProposalStatus {
   REJECTED
   WITHDRAWN
 }
-
-
-model User {
-  id            String    @id @default(uuid())
-  fullName      String
-  email         String    @unique
-  passwordHash  String?
-  googleId      String?   @unique
-  phoneNumber   String?
-  role          UserRole
-  createdAt     DateTime  @default(now())
-
-  profile       Profile?
-  
-  jobsAsClient     Job[]      @relation("ClientJobs")
-  jobsAsFreelancer Job[]      @relation("FreelancerJobs")
-  proposals        Proposal[] @relation("FreelancerProposals")
-  
-  reviewsSent      Review[]   @relation("ReviewsSent")
-  reviewsRec       Review[]   @relation("ReviewsReceived")
-
-  notifications    Notification[]
-}
-
-model Profile {
-  id             String    @id @default(uuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  bio            String?
-  profilePicLink String?
-  videoLink      String?
-  
-  // location
-  location       String?
-  latitude       Float?
-  longitude      Float?
-
-  isHourly        Boolean   @default(false)
-  hourlyRate      Decimal?  @db.Decimal(10, 2)
-  preferredJobType JobType  @default(FIXED_PRICE)
-  
-  projects       Project[]
-  skills         Skill[]   @relation("ProfileSkills")
-}
-
-model Project {
-  id          String         @id @default(uuid())
-  profileId   String
-  profile     Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  
-  title       String
-  description String?
-  projectUrl  String?   
-  videoUrl    String?   
-  
-  // A project can have many screenshots
-  images      ProjectImage[] 
-  
-  skillsUsed  Skill[]        @relation("ProjectSkills")
-  completedAt DateTime?
-}
-
-model ProjectImage {
-  id        String   @id @default(uuid())
-  url       String   // The link to the hosted image
-  altText   String?  // Good for SEO and accessibility
-  
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-}
-
-model Job {
-  id             String    @id @default(uuid())
-  title          String
-  description    String
-  status         JobStatus @default(OPEN)
-  
-  // Payment Logic
-  type           JobType   @default(FIXED_PRICE)
-  budget         Decimal?  @db.Decimal(10, 2)
-  estimatedHours Int?
-  
-  // Geolocation
-  location       String?
-  latitude       Float?
-  longitude      Float?
-
-  // Relations
-  clientId       String
-  client         User      @relation("ClientJobs", fields: [clientId], references: [id], onDelete: Cascade)
-  
-  freelancerId   String?
-  freelancer     User?     @relation("FreelancerJobs", fields: [freelancerId], references: [id])
-  
-  proposals      Proposal[]
-  skillsRequired Skill[]    @relation("JobSkills")
-  reviews        Review[]
-  
-  videoUrl        String?     // Video explainer
-  images          JobImage[]  // Reference photos/sketches
-
-  createdAt      DateTime  @default(now())
-}
-
-model Proposal {
-  id            String         @id @default(uuid())
-  coverLetter   String         @db.Text
-  bidAmount     Decimal        @db.Decimal(10, 2)
-  estimatedDays Int?
-  status        ProposalStatus @default(PENDING)
-  
-  jobId         String
-  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  freelancerId  String
-  freelancer    User           @relation("FreelancerProposals", fields: [freelancerId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime       @default(now())
-
-  @@unique([jobId, freelancerId])
-}
-
-model Skill {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  
-  parentId    String?
-  parent      Skill?    @relation("SkillHierarchy", fields: [parentId], references: [id])
-  subSkills   Skill[]   @relation("SkillHierarchy")
-
-  profiles    Profile[] @relation("ProfileSkills")
-  jobs        Job[]     @relation("JobSkills")
-
-
-  projects    Project[] @relation("ProjectSkills") 
-}
-
-model Review {
-  id           String   @id @default(uuid())
-  jobId        String
-  job          Job      @relation(fields: [jobId], references: [id])
-  
-  reviewerId   String
-  reviewer     User     @relation("ReviewsSent", fields: [reviewerId], references: [id])
-  
-  revieweeId   String
-  reviewee     User     @relation("ReviewsReceived", fields: [revieweeId], references: [id])
-  
-  rating       Int
-  comment      String?
-  createdAt    DateTime @default(now())
-}
-
-model Session {
-  id        String   @id @map("sid")
-  data      String   @map("sess") @db.Text
-  expiresAt DateTime @map("expire")
-
-  @@map("Session")
-}
-
-model JobImage {
-  id        String   @id @default(uuid())
-  url       String
-  jobId     String
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type      String   
-  message   String
-  link      String?  
-  isRead    Boolean  @default(false)
-  
-  createdAt DateTime @default(now())
-}
-

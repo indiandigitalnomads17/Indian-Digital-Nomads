@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import useAuth from '@/hooks/useAuth';
+import NotificationBell from './common/NotificationBell';
 
 const Navbar = () => {
   const { user, authenticated, logout } = useAuth();
@@ -23,11 +24,12 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           {authenticated ? (
             <div className="flex items-center gap-6">
+              <NotificationBell />
               <Link 
-                href={user?.role === 'FREELANCER' ? '/freelancer' : '/dashboard'}
+                href={user?.role === 'FREELANCER' ? '/freelancer/profile' : '/dashboard'}
                 className="text-[#0B1C30] text-sm font-bold hover:text-[#2563EB] transition-colors"
               >
-                Dashboard
+                {user?.role === 'FREELANCER' ? 'Profile' : 'Dashboard'}
               </Link>
               <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
                 <div className="w-8 h-8 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-bold">

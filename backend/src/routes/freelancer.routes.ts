@@ -1,5 +1,11 @@
 import { Router } from "express";
-import { addProject, onboardFreelancer , getPrivateFreelancerProfile} from "../controllers/freelancer.controller";
+import { 
+  addProject, 
+  onboardFreelancer, 
+  getPrivateFreelancerProfile,
+  getFreelancerDashboardStats,
+  getRecommendedJobs
+} from "../controllers/freelancer.controller";
 import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
@@ -12,7 +18,8 @@ router.patch(
   authorize("FREELANCER"),
   upload.fields([
     { name: "profilePic", maxCount: 1 },
-    { name: "introVideo", maxCount: 1 }
+    { name: "introVideo", maxCount: 1 },
+    { name: "banner", maxCount: 1 }
   ]),
   onboardFreelancer
 );
@@ -30,7 +37,9 @@ router.post(
 
 router.get("/get-profile-data", protect, authorize("FREELANCER"), getPrivateFreelancerProfile);
 
-router.post("/send-propsal",protect, authorize("FREELANCER"),submitProposal);
+router.get("/dashboard-stats", protect, authorize("FREELANCER"), getFreelancerDashboardStats);
+router.get("/recommendations", protect, authorize("FREELANCER"), getRecommendedJobs);
 
+router.post("/send-proposal", protect, authorize("FREELANCER"), submitProposal);
 
 export default router;
