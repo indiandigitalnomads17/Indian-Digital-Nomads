@@ -3,7 +3,7 @@ import { createJob, onboardClient } from "../controllers/client.controller";
 import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
-import { getPrivateClientProfile } from "../controllers/client.controller";
+import { getPrivateClientProfile, getClientDashboardStats, getRecommendedFreelancers } from "../controllers/client.controller";
 
 
 const router = Router();
@@ -31,5 +31,7 @@ router.post(
 );
 
 router.get("/get-profile-data", protect, authorize("CLIENT"), getPrivateClientProfile);
+router.get("/dashboard-stats", protect, authorize("CLIENT"), getClientDashboardStats);
+router.get("/recommendations", protect, authorize("CLIENT"), getRecommendedFreelancers);
 
 export default router;

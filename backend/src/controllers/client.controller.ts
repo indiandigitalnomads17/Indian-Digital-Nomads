@@ -205,3 +205,113 @@ export const createJob = async (req: Request, res: Response) => {
   }
 };
 
+export const getRecommendedFreelancers = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+
+    // 1. Get client's open jobs to find matching skills
+    const openJobs = await prisma.job.findMany({
+      where: { clientId: userId, status: "OPEN" },
+      include: { skillsRequired: { select: { id: true } } }
+    });
+
+    // 2. Get client's location from profile
+    const clientProfile = await prisma.profile.findUnique({
+      where: { userId },
+      select: { latitude: true, longitude: true }
+    });
+
+    if (!clientProfile || !clientProfile.latitude || !clientProfile.longitude) {
+      // Fallback: return top rated freelancers if no location
+      const topFreelancers = await prisma.user.findMany({
+        where: { role: "FREELANCER" },
+        take: 10,
+        include: {
+          profile: {
+            include: { skills: { select: { name: true } } }
+          }
+        }
+      });
+      return res.status(200).json({ success: true, data: topFreelancers });
+    }
+
+    const { latitude, longitude } = clientProfile;
+    const RADIUS_KM = 50;
+    const degToKm = 111;
+
+    // 3. Find freelancers nearby
+    const nearbyFreelancers = await prisma.user.findMany({
+      where: {
+        role: "FREELANCER",
+        profile: {
+          latitude: {
+            gte: latitude - (RADIUS_KM / degToKm),
+            lte: latitude + (RADIUS_KM / degToKm)
+          },
+          longitude: {
+            gte: longitude - (RADIUS_KM / degToKm),
+            lte: longitude + (RADIUS_KM / degToKm)
+          }
+        }
+      },
+      include: {
+        profile: {
+          include: { skills: { select: { id: true, name: true } } }
+        }
+      },
+      take: 20
+    });
+
+    // 4. Score based on matching skills from open jobs
+    const clientSkillIds = new Set(openJobs.flatMap(j => j.skillsRequired.map(s => s.id)));
+    
+    const scoredFreelancers = nearbyFreelancers.map(freelancer => {
+      const freelancerSkillIds = freelancer.profile?.skills.map(s => s.id) || [];
+      const matchCount = freelancerSkillIds.filter(id => clientSkillIds.has(id)).length;
+      const matchPercent = clientSkillIds.size > 0 ? (matchCount / clientSkillIds.size) * 100 : 0;
+      
+      return { 
+        ...freelancer, 
+        matchPercent: Math.round(matchPercent) 
+      };
+    }).sort((a, b) => b.matchPercent - a.matchPercent);
+
+    res.status(200).json({ success: true, data: scoredFreelancers });
+
+  } catch (error) {
+    console.error("Recommended Freelancers Error:", error);
+    res.status(500).json({ error: "Failed to fetch recommended freelancers" });
+  }
+};
+
+export const getClientDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+
+    const [activeGigs, totalHired, pendingProposals] = await prisma.$transaction([
+      prisma.job.count({
+        where: { clientId: userId, status: "OPEN" }
+      }),
+      prisma.job.count({
+        where: { clientId: userId, status: { in: ["IN_PROGRESS", "COMPLETED"] } }
+      }),
+      prisma.proposal.count({
+        where: { job: { clientId: userId }, status: "PENDING" }
+      })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        activeGigs,
+        totalHired,
+        pendingProposals
+      }
+    });
+
+  } catch (error) {
+    console.error("Client Dashboard Stats Error:", error);
+    res.status(500).json({ error: "Failed to fetch client dashboard stats" });
+  }
+};
+
