@@ -16,7 +16,7 @@ const pgSession = require("connect-pg-simple")(session);
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URI || "http://localhost:3000",
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 }));
@@ -46,6 +46,17 @@ export const sessionMiddleware = session({
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Debug Middleware: Log session info for every request
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`  Session ID: ${req.sessionID}`);
+  console.log(`  Is Authenticated: ${req.isAuthenticated()}`);
+  if (req.user) {
+    console.log(`  User: ${(req.user as any).email} (${(req.user as any).id})`);
+  }
+  next();
+});
 
 // Routes
 app.use("/api/auth/google", googleAuthRouter);

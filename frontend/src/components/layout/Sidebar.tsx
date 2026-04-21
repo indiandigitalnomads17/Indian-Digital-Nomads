@@ -2,13 +2,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import useAuth from '@/hooks/useAuth';
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, authenticated, logout } = useAuth();
   
-  // Determine if we show Client or Freelancer links
   const isClient = user?.role === 'CLIENT';
 
   const clientLinks = [
@@ -29,53 +28,88 @@ const Sidebar = () => {
   const links = isClient ? clientLinks : freelancerLinks;
 
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col gap-2 p-4 bg-slate-50 border-r border-slate-200/15 fixed left-0 top-0 overflow-y-auto pt-28">
-      <div className="mb-8 px-2 flex items-center gap-3">
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-            {isClient ? 'business' : 'person'}
-          </span>
-        </div>
-        <div>
-          <h1 className="text-sm font-black text-blue-700 font-headline leading-none truncate max-w-[120px]">
-            {user?.fullName || 'Local User'}
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-            {isClient ? 'Business Owner' : 'Top Rated Pro'}
-          </p>
-        </div>
+    <aside className="hidden md:flex h-screen w-64 flex-col bg-white border-r border-slate-200 fixed left-0 top-0 overflow-y-auto z-[60] shadow-xl shadow-slate-200/20">
+      {/* Brand Header */}
+      <div className="p-6 border-b border-slate-50 flex items-center gap-3">
+        <Link href="/" className="text-xl font-black tracking-tighter text-[#2563EB]">
+            LocalGigs
+        </Link>
       </div>
 
-      <nav className="flex flex-col gap-1 flex-1">
-        {links.map((link) => {
-          const isActive = pathname === link.href;
-          return (
-            <Link 
-              key={link.href} 
-              href={link.href}
-              className={`flex items-center gap-3 px-4 py-3 transition-all rounded-lg group ${
-                isActive 
-                ? 'bg-primary text-white shadow-sm' 
-                : 'text-slate-600 hover:bg-slate-200/50 hover:translate-x-1'
-              }`}
-            >
-              <span className={`material-symbols-outlined text-xl ${isActive ? 'fill-icon' : ''}`} 
-                    style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
-                {link.icon}
-              </span>
-              <span className="text-sm font-semibold">{link.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      {/* User Status Section */}
+      <div className="p-6">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-200">
+              {user?.fullName?.charAt(0).toUpperCase()}
+            </div>
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-white"></span>
+          </div>
+          <div className="truncate">
+            <h1 className="text-sm font-black text-slate-900 leading-none mb-1">
+              {user?.fullName || 'Guest User'}
+            </h1>
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">
+              {isClient ? 'Business Owner' : 'Expert Pro'}
+            </p>
+          </div>
+        </div>
 
-      <div className="mt-auto p-4 bg-surface-container-low rounded-xl">
-        <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">
-          {isClient ? 'Concierge Mode' : 'Premium Tier'}
-        </p>
-        <button className="w-full py-2 px-4 bg-white text-blue-700 text-xs font-bold rounded-lg border border-blue-100 hover:bg-blue-50 transition-colors">
-          Settings
-        </button>
+        {/* Action Controls */}
+        <div className="flex items-center gap-3 mb-6">
+          <button 
+            onClick={logout}
+            className="w-full text-xs font-black text-red-500 hover:bg-red-50 px-3 py-2.5 rounded-xl border border-red-100 transition-all uppercase tracking-widest text-center"
+          >
+            Logout session
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-1.5">
+          {links.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link 
+                key={link.href} 
+                href={link.href}
+                className={`flex items-center gap-3 px-4 py-3.5 transition-all rounded-xl group ${
+                  isActive 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-blue-600 hover:translate-x-1'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-lg ${isActive ? '' : 'text-slate-400 group-hover:text-blue-500'}`}>
+                  {link.icon}
+                </span>
+                <span className="text-xs font-black uppercase tracking-wider">{link.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="mt-auto p-6 space-y-4">
+        {/* Support Section */}
+        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 text-center">Support & Meta</p>
+          <div className="flex flex-col gap-1">
+             <Link href="/help" className="text-[10px] font-bold text-slate-600 hover:text-blue-600 py-1 transition-colors flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">help</span> Help Center
+             </Link>
+             <Link href="/terms" className="text-[10px] font-bold text-slate-600 hover:text-blue-600 py-1 transition-colors flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">menu_book</span> User Guide
+             </Link>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between px-2">
+           <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">v1.2.4</span>
+           <div className="flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-100"></div>
+              <div className="w-2 h-2 rounded-full bg-blue-200"></div>
+              <div className="w-2 h-2 rounded-full bg-blue-300"></div>
+           </div>
+        </div>
       </div>
     </aside>
   );

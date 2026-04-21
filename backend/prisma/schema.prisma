@@ -29,7 +29,6 @@ model Profile {
   userId           String    @unique
   bio              String?
   profilePicLink   String?
-  bannerLink       String?
   videoLink        String?
   location         String?
   latitude         Float?
@@ -37,6 +36,7 @@ model Profile {
   hourlyRate       Decimal?  @db.Decimal(10, 2)
   isHourly         Boolean   @default(false)
   preferredJobType JobType   @default(FIXED_PRICE)
+  bannerLink       String?
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects         Project[]
   skills           Skill[]   @relation("ProfileSkills")

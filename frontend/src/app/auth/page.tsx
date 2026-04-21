@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useAuthContext } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
@@ -42,6 +43,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const { refreshUser } = useAuthContext();
   const router = useRouter();
 
   const clearErrors = () => {
@@ -65,6 +67,9 @@ export default function AuthPage() {
 
       const response = await api.post(endpoint, payload);
       const userRole: Role = response.data.user?.role;
+
+      // 2. Refresh AuthContext so global state (authenticated, user) updates
+      await refreshUser();
 
       if (userRole === 'CLIENT') {
         router.push('/dashboard');
@@ -224,10 +229,9 @@ export default function AuthPage() {
           </span>
         </div>
 
-        {/* Google OAuth */}
         <button
           onClick={() =>
-            (window.location.href = `http://localhost:5000/api/auth/google?role=${role}`)
+            (window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/google?role=${role}`)
           }
           className="w-full py-3 flex items-center justify-center gap-3 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors"
         >

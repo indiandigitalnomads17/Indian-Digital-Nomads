@@ -85,7 +85,7 @@ const NotificationBell = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-outline-variant/10 overflow-hidden z-[100]">
+        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100]">
           <div className="p-4 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
             <h4 className="text-sm font-black uppercase tracking-widest text-on-surface">Notifications</h4>
             {unreadCount > 0 && (
@@ -134,12 +134,6 @@ const NotificationBell = () => {
                 <p className="text-sm font-bold text-outline">All caught up!</p>
               </div>
             )}
-          </div>
-          
-          <div className="p-3 bg-surface-container-lowest border-top border-outline-variant/10 text-center">
-            <button className="text-[11px] font-black text-outline uppercase tracking-widest hover:text-on-surface">
-              View Notification History
-            </button>
           </div>
         </div>
       )}

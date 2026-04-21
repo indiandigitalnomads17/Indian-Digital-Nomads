@@ -66,9 +66,17 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
+    console.log(`[Login] Attempting login for: ${email}`);
+    
     req.login(user, (err) => {
-      if (err) return res.status(500).json({ error: "Could not log in user" });
+      if (err) {
+        console.error("[Login Error] Passport req.login failed:", err);
+        return res.status(500).json({ error: "Could not log in user" });
+      }
       
+      console.log(`[Login] Success! Session ID after req.login: ${req.sessionID}`);
+      console.log(`[Request Info] Authenticated: ${req.isAuthenticated()}`);
+
       return res.status(200).json({
         message: "Logged in successfully",
         user: {
@@ -88,26 +96,20 @@ export const getMe = async (req: Request, res: Response) => {
   try {
     const user = req.user as any;
     if (!user) {
-      return res.status(401).json({ success: false, error: "Not authenticated" });
+      // Return 200 with success: false to avoid "401 Unauthorized" console errors on every landing page visit
+      return res.status(200).json({ success: false, data: null });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-      }
-    });
-
-    if (!currentUser) {
-      return res.status(404).json({ success: false, error: "User not found" });
-    }
-
+    // req.user is already populated by passport.deserializeUser
+    // which already does findUnique on the DB.
     res.status(200).json({
       success: true,
-      data: currentUser
+      data: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: "Internal server error" });
@@ -116,9 +118,11 @@ export const getMe = async (req: Request, res: Response) => {
 
 export const signOut = (req: Request, res: Response) => {
   req.logout((err: any) => {
-    if (err) {
-      return res.status(500).json({ success: false, error: "Logout failed" });
-    }
-    res.status(200).json({ success: true, message: "Logged out successfully" });
+    if (err) return res.status(500).json({ success: false, error: "Logout failed" });
+    
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid", { path: "/" });
+      res.status(200).json({ success: true, message: "Logged out successfully" });
+    });
   });
 };
