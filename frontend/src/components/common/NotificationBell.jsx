@@ -112,7 +112,7 @@ const NotificationBell = () => {
                       <p className={`text-sm ${!n.isRead ? 'font-bold text-on-surface' : 'text-on-surface-variant font-medium'}`}>
                         {n.message}
                       </p>
-                      <p className="text-[10px] text-outline mt-1 font-bold">
+                      <p className="text-[10px] text-outline mt-1 font-bold" suppressHydrationWarning>
                         {new Date(n.createdAt).toLocaleDateString()} • {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                       {n.link && (

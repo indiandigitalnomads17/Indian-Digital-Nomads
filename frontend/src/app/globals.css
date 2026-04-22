@@ -179,6 +179,18 @@ h1, h2, h3, h4, h5, h6 {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@layer components {
+  .glass {
+    backdrop-filter: blur(8px) saturate(180%);
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(241,245,249,0.5) 60%, rgba(255,255,255,1) 100%);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all .3s;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

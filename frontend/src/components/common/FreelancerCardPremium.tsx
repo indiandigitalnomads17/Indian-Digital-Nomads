@@ -5,7 +5,7 @@ import { Star01, MarkerPin01, MessageChatSquare, Bookmark } from "@untitledui/ic
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
+import { Tooltip } from "@/components/base/tooltip/tooltip";
 
 interface FreelancerCardProps {
     data: {
@@ -59,14 +59,12 @@ export const FreelancerCardPremium = ({ data }: FreelancerCardProps) => {
                 </Button>
                 
                 <Tooltip title="Save for later">
-                    <TooltipTrigger>
-                        <Button 
-                            color="secondary" 
-                            size="md" 
-                            aria-label="Save freelancer"
-                            iconLeading={Bookmark}
-                        />
-                    </TooltipTrigger>
+                    <Button 
+                        color="secondary" 
+                        size="md" 
+                        aria-label="Save freelancer"
+                        iconLeading={Bookmark}
+                    />
                 </Tooltip>
             </div>
         </div>

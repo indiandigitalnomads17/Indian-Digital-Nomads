@@ -4,7 +4,7 @@ import { MainSidebarContent } from './MainSidebarContent';
 import { MobileNavigationHeader } from '../application/app-navigation/base-components/mobile-header';
 import NotificationBell from '../common/NotificationBell';
 import { Button } from '@/components/base/buttons/button';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Plus } from '@untitledui/icons';
 
 const DashboardLayout = ({ children }) => {
@@ -37,16 +37,14 @@ const DashboardLayout = ({ children }) => {
 
       {/* Floating Action Button */}
       <Tooltip title="Post a new gig to attract talent">
-        <TooltipTrigger>
-          <Button 
-            className="fixed bottom-8 right-8 shadow-2xl z-[100] hover:scale-105 active:scale-95 transition-all"
-            color="primary"
-            size="lg"
-            iconLeading={Plus}
-          >
-            Post a New Gig
-          </Button>
-        </TooltipTrigger>
+        <Button 
+          className="fixed bottom-8 right-8 shadow-2xl z-[100] hover:scale-105 active:scale-95 transition-all"
+          color="primary"
+          size="lg"
+          iconLeading={Plus}
+        >
+          Post a New Gig
+        </Button>
       </Tooltip>
     </div>
   );

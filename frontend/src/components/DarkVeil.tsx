@@ -114,17 +114,30 @@ export default function DarkVeil({
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    if (!ref.current || !ref.current.parentElement) return;
+    
     const canvas = ref.current as HTMLCanvasElement;
     const parent = canvas.parentElement as HTMLElement;
 
-    const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio, 2),
-      canvas,
-      alpha: true,
-      premultipliedAlpha: false
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({
+        dpr: Math.min(window.devicePixelRatio, 2),
+        canvas,
+        alpha: true,
+        premultipliedAlpha: false
+      });
+    } catch (e) {
+      console.warn("WebGL context creation failed:", e);
+      return;
+    }
 
     const gl = renderer.gl;
+    if (gl.isContextLost()) {
+      console.warn("WebGL context is lost.");
+      return;
+    }
+
     gl.clearColor(0, 0, 0, 0);
     const geometry = new Triangle(gl);
 
@@ -143,6 +156,11 @@ export default function DarkVeil({
         uOpacity: { value: opacity }
       }
     });
+
+    if (!program.attributeLocations || !program.uniformLocations) {
+      console.warn("WebGL program failed to initialize properly.");
+      return;
+    }
 
     const mesh = new Mesh(gl, { geometry, program });
 
@@ -177,6 +195,10 @@ export default function DarkVeil({
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
+      if (renderer && renderer.gl) {
+        const ext = renderer.gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      }
     };
   }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale, lightMode, opacity]);
   return <canvas ref={ref} className="w-full h-full block" />;

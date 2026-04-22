@@ -1,5 +1,7 @@
 import React from 'react';
 import DarkVeil from './DarkVeil';
+import BorderGlow from './BorderGlow';
+import AnimatedBtn1 from './mvpblocks/animated-btn1';
 import { PointerHighlight } from './ui/pointer-highlight';
 
 const Hero = () => (
@@ -8,7 +10,7 @@ const Hero = () => (
     <div className="absolute left-1/2 -translate-x-1/2 w-screen top-0 z-0 pointer-events-none overflow-hidden h-[800px]">
         <DarkVeil 
             lightMode={true} 
-            opacity={0.9} 
+            opacity={2} 
             speed={1.5} 
             noiseIntensity={0.01}
         />
@@ -35,28 +37,48 @@ const Hero = () => (
         
         <div className="flex flex-col sm:flex-row gap-8 w-full max-w-3xl justify-center">
           {/* Card 1: Business */}
-          <div className="group flex-1 p-8 bg-white rounded-3xl shadow-xl shadow-blue-500/5 border border-slate-100 hover:border-blue-500/20 transition-all cursor-pointer text-left flex flex-col items-center text-center sm:text-left sm:items-start">
-            <div className="mb-6 h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-[#2563EB]">
-              <span className="material-symbols-outlined text-3xl">storefront</span>
-            </div>
+          <BorderGlow 
+            className="group flex-1 p-8 shadow-xl shadow-green-500/5 transition-all cursor-pointer flex flex-col items-center text-center"
+            backgroundColor="#ffffff"
+            colors={['#10b981', '#34d399', '#6ee7b7']}
+            glowColor="160 84 39"
+            borderRadius={24}
+          >
+
             <h3 className="font-headline text-2xl font-bold mb-2 text-[#0B1C30]">I am a Business Owner</h3>
             <p className="text-[#64748B] mb-8 text-sm">Post a gig and find talent in minutes.</p>
-            <button className="w-full mt-auto py-4 bg-[#2563EB] text-white font-bold rounded-2xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
+            <AnimatedBtn1 
+              className="mt-auto shadow-lg shadow-green-500/20"
+              color1="#1ab854ff"
+              color2="#15803d"
+              hoverColor1="#15803d"
+              hoverColor2="#166534"
+            >
               Hire Talent
-            </button>
-          </div>
+            </AnimatedBtn1>
+          </BorderGlow>
           
           {/* Card 2: Student */}
-          <div className="group flex-1 p-8 bg-white rounded-3xl shadow-xl shadow-green-500/5 border border-slate-100 hover:border-green-500/20 transition-all cursor-pointer text-left flex flex-col items-center text-center sm:text-left sm:items-start">
-            <div className="mb-6 h-12 w-12 rounded-2xl bg-green-50 flex items-center justify-center text-[#10B981]">
-              <span className="material-symbols-outlined text-3xl">school</span>
-            </div>
+          <BorderGlow 
+            className="group flex-1 p-8 shadow-xl shadow-blue-500/5 transition-all cursor-pointer flex flex-col items-center text-center"
+            backgroundColor="#ffffff"
+            colors={['#3b82f6', '#60a5fa', '#93c5fd']}
+            glowColor="217 91 60"
+            borderRadius={24}
+          >
+
             <h3 className="font-headline text-2xl font-bold mb-2 text-[#0B1C30]">I am a Student Freelancer</h3>
             <p className="text-[#64748B] mb-8 text-sm">Monetize your skills locally today.</p>
-            <button className="w-full mt-auto py-4 bg-[#10B981] text-white font-bold rounded-2xl hover:bg-green-700 transition-colors shadow-lg shadow-green-500/20 text-center">
+            <AnimatedBtn1 
+              className="mt-auto shadow-lg shadow-blue-500/20"
+              color1="#3b82f6"
+              color2="#2563EB"
+              hoverColor1="#2563EB"
+              hoverColor2="#1d4ed8"
+            >
               Find Gigs
-            </button>
-          </div>
+            </AnimatedBtn1>
+          </BorderGlow>
         </div>
 
     </div>
