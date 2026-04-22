@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import StatCard from '../../components/common/StatCard';
-import FreelancerCard from '../../components/common/FreelancerCard';
+import { StatCardPremium } from '../../components/common/StatCardPremium';
+import { FreelancerCardPremium } from '../../components/common/FreelancerCardPremium';
+import { Button } from '@/components/base/buttons/button';
+import { Plus, Users01 } from '@untitledui/icons';
 import useAuth from '@/hooks/useAuth';
 import api from '@/lib/api';
 
@@ -62,21 +64,27 @@ const BusinessDashboard = () => {
 
       {/* Stats Bento */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-        <StatCard label="Active Projects" value={stats.activeGigs.toString()} suffix="Gigs" trend="" />
-        <StatCard label="Total Hired" value={stats.totalHired.toString()} suffix="Freelancers" trend="" />
+        <StatCardPremium label="Active Projects" value={stats.activeGigs.toString()} suffix="Active Gigs" />
+        <StatCardPremium label="Total Hired" value={stats.totalHired.toString()} suffix="Freelancers" />
         
-        {/* Special Blue Card (Unique) */}
-        <div className="hidden lg:flex bg-primary-container text-white p-8 rounded-xl flex-col justify-between relative overflow-hidden">
+        {/* New Proposals Card */}
+        <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
           <div className="relative z-10">
-            <p className="text-foreground font-bold  text-sm mb-1">New Proposals</p>
-            <h3 className="text-2xl text-foreground font-bold tracking-tight font-headline">
-              {stats.pendingProposals} Pending review
+            <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Review Required</p>
+            <h3 className="text-2xl text-slate-900 font-bold tracking-tight mb-4">
+              {stats.pendingProposals} Pending Proposals
             </h3>
           </div>
-          <button className="relative z-10 w-fit bg-white text-primary px-4 py-2 rounded-lg font-bold text-sm">
-            View Proposals
-          </button>
-          <span className="absolute -right-4 -bottom-4 opacity-20 material-symbols-outlined text-[120px]" style={{ fontVariationSettings: "'FILL' 1" }}>insights</span>
+          <Button 
+            className="w-fit"
+            color="primary" 
+            size="md"
+          >
+            Review Now
+          </Button>
+          <div className="absolute -right-4 -bottom-4 text-slate-100">
+             <Users01 className="size-32" />
+          </div>
         </div>
       </div>
 
@@ -87,12 +95,12 @@ const BusinessDashboard = () => {
         </div>
         {loading ? (
           <div className="flex justify-center p-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-solid"></div>
           </div>
         ) : recommendations.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {recommendations.map((freelancer, idx) => (
-              <FreelancerCard key={idx} data={formatFreelancerData(freelancer)} />
+              <FreelancerCardPremium key={idx} data={formatFreelancerData(freelancer)} />
             ))}
           </div>
         ) : (

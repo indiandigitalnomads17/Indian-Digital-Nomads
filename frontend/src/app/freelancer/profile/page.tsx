@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 const FreelancerProfile = () => {
   const [loading, setLoading] = useState(true);
@@ -156,9 +156,8 @@ const FreelancerProfile = () => {
   if (loading) return <div className="p-20 text-center font-bold">Loading your professional profile...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <Sidebar />
-      <main className="pl-72 pt-32 pr-8 pb-20">
+    <DashboardLayout>
+      <main className="pt-8 pb-20">
         <div className="max-w-5xl mx-auto">
           {/* Cover / Profile Header */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
@@ -469,7 +468,7 @@ const FreelancerProfile = () => {
           </div>
         </div>
       </main>
-    </div>
+    </DashboardLayout>
   );
 };
 

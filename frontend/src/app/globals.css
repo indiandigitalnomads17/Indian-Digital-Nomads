@@ -1,25 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8f9ff;
-  --foreground: #0b1c30;
-  --primary: #2563EB;
-  --secondary: #10B981;
-  --tertiary: #BC4800;
-  --neutral: #64748B;
+  --background: #ffffff;
+  --foreground: #0f172a;
+  
+  /* Brand Colors */
+  --brand-solid: #0f172a;        /* Black/Dark Slate for Primary */
+  --brand-solid-hover: #1e293b;
+  --brand-secondary: #2563EB;    /* Blue for Secondary */
+  --brand-secondary-hover: #1d4ed8;
+  
+  /* Neutral Colors */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-secondary: var(--secondary);
-  --color-tertiary: var(--tertiary);
-  --color-neutral: var(--neutral);
   
-  --font-headline: var(--font-manrope);
-  --font-body: var(--font-inter);
-  --font-label: var(--font-inter);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-solid_hover: var(--brand-solid-hover);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-secondary_hover: var(--brand-secondary-hover);
+
+  /* Mapping primary/secondary for components that use these generic names */
+  --color-primary: var(--brand-solid);
+  --color-primary_hover: var(--brand-solid-hover);
+  --color-secondary: var(--brand-secondary);
+  --color-secondary_hover: var(--brand-secondary-hover);
+
+  /* Base palette mappings */
+  --color-blue-500: #2563EB;
+  --color-slate-900: #0f172a;
+  
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+
+  --font-headline: Manrope, sans-serif;
+  --font-body: Inter, sans-serif;
 }
 
 body {
