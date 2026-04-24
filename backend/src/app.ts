@@ -12,6 +12,8 @@ import publicRoutes from "./routes/public.routes";
 import dashboardRoutes from "./routes/dashboard.route";
 import clientRoutes from "./routes/client.routes";
 
+// TODO: Flagged for potential removal - consider moving to a Prisma-based session store 
+// (e.g., prisma-session-store) to move entirely away from manual 'pg' logic.
 const pgSession = require("connect-pg-simple")(session);
 const app = express();
 

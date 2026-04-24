@@ -8,7 +8,7 @@ import ApplyModal from '../../components/common/ApplyModal';
 import api from '@/lib/api';
 import useAuth from '@/hooks/useAuth';
 
-const formatTimeAgo = (dateString) => {
+const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
@@ -18,11 +18,21 @@ const formatTimeAgo = (dateString) => {
   return `${Math.floor(diffInHours / 24)} DAYS AGO`;
 };
 
+interface Job {
+  id: string;
+  title: string;
+  matchPercent?: number;
+  createdAt: string;
+  location?: string;
+  budget?: number;
+  description: string;
+}
+
 const FreelancerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState({ activeJobs: 0, pendingProposals: 0, monthlyEarnings: 0 });
-  const [jobs, setJobs] = useState([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -48,7 +58,7 @@ const FreelancerDashboard = () => {
       if (!profile || !profile.bio || profile.bio.length < 10) {
         setNeedsOnboarding(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching freelancer dashboard data:", error);
       if (error.response?.status === 404) {
           setNeedsOnboarding(true);
@@ -64,7 +74,7 @@ const FreelancerDashboard = () => {
     }
   }, [authLoading, user]);
 
-  const transformedJobs = jobs.map(job => ({
+  const transformedJobs = jobs.map((job: Job) => ({
     id: job.id,
     title: job.title,
     match: job.matchPercent ? `${job.matchPercent}%` : "Match",
@@ -74,7 +84,7 @@ const FreelancerDashboard = () => {
     description: job.description
   }));
 
-  const handleApply = (job) => {
+  const handleApply = (job: any) => {
     setSelectedJob(job);
     setShowApplyModal(true);
   };

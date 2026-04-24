@@ -4,16 +4,21 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 
+interface Skill {
+  id: string;
+  name: string;
+}
+
 const AddProject = () => {
-  const [allSkills, setAllSkills] = useState([]);
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     projectUrl: '',
-    skills: [],
+    skills: [] as string[],
     completedAt: '',
-    screenshots: [],
+    screenshots: [] as File[],
   });
   const router = useRouter();
 
@@ -29,7 +34,7 @@ const AddProject = () => {
     fetchSkills();
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -56,8 +61,10 @@ const AddProject = () => {
     }
   };
 
-  const handleFileChange = (e) => {
-    setFormData({ ...formData, screenshots: Array.from(e.target.files) });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFormData({ ...formData, screenshots: Array.from(e.target.files) });
+    }
   };
 
   return (

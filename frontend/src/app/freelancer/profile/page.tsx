@@ -4,13 +4,47 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
+interface Skill {
+  id: string;
+  name: string;
+}
+
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  images: { url: string }[];
+  skillsUsed: { name: string }[];
+}
+
+interface ProfileData {
+  fullName: string;
+  phoneNumber?: string;
+  profile?: {
+    bio?: string;
+    location?: string;
+    hourlyRate?: string | number;
+    isHourly?: boolean;
+    preferredJobType?: string;
+    skills: Skill[];
+    latitude?: number;
+    longitude?: number;
+    bannerLink?: string;
+    projects: Project[];
+  };
+  _count: {
+    jobsAsFreelancer: number;
+    proposals: number;
+  };
+}
+
 const FreelancerProfile = () => {
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const [allSkills, setAllSkills] = useState([]);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -20,13 +54,13 @@ const FreelancerProfile = () => {
     hourlyRate: '',
     isHourly: false,
     preferredJobType: 'FIXED_PRICE',
-    skills: [], // IDs of selected skills
+    skills: [] as string[], // IDs of selected skills
     latitude: 0,
     longitude: 0,
   });
   
-  const [bannerFile, setBannerFile] = useState(null);
-  const [bannerPreview, setBannerPreview] = useState(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -48,7 +82,7 @@ const FreelancerProfile = () => {
             hourlyRate: data.profile?.hourlyRate || '',
             isHourly: data.profile?.isHourly || false,
             preferredJobType: data.profile?.preferredJobType || 'FIXED_PRICE',
-            skills: data.profile?.skills.map(s => s.id) || [],
+            skills: data.profile?.skills.map((s: Skill) => s.id) || [],
             latitude: data.profile?.latitude || 0,
             longitude: data.profile?.longitude || 0,
           });
@@ -66,7 +100,7 @@ const FreelancerProfile = () => {
     fetchData();
   }, []);
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
     setSubmitting(true);
@@ -94,7 +128,7 @@ const FreelancerProfile = () => {
         const profileRes = await api.get('/api/v1/freelancer/get-profile-data');
         setProfile(profileRes.data.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err.response?.status === 400 && err.response.data.errors) {
         setErrors(err.response.data.errors);
       } else {
@@ -145,8 +179,8 @@ const FreelancerProfile = () => {
     );
   };
 
-  const handleBannerChange = (e) => {
-    const file = e.target.files[0];
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setBannerFile(file);
       setBannerPreview(URL.createObjectURL(file));
@@ -208,7 +242,7 @@ const FreelancerProfile = () => {
                       <ul className="list-disc pl-5 space-y-1">
                         {Object.entries(errors).map(([key, val]) => (
                           <li key={key} className="text-xs font-bold text-red-500">
-                            {val._errors?.join(', ') || 'Invalid input'}
+                             {((val as any)._errors as string[])?.join(', ') || 'Invalid input'}
                           </li>
                         ))}
                       </ul>
@@ -274,7 +308,7 @@ const FreelancerProfile = () => {
                   <div className="space-y-4">
                     <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Expertise</label>
                     <div className={`flex flex-wrap gap-2 p-6 bg-slate-50 rounded-2xl border ${errors.skills ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
-                       {allSkills.map(skill => (
+                       {allSkills.map((skill: Skill) => (
                          <button
                            key={skill.id}
                            type="button"
@@ -383,8 +417,8 @@ const FreelancerProfile = () => {
                </div>
 
                <div className="grid grid-cols-1 gap-6">
-                 {profile?.profile?.projects.length > 0 ? (
-                   profile.profile.projects.map(project => (
+                 {profile?.profile?.projects && profile.profile.projects.length > 0 ? (
+                   profile.profile.projects.map((project: Project) => (
                      <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex gap-8 items-start hover:border-blue-400 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group">
                         <div className="w-48 h-32 rounded-2xl bg-slate-100 shrink-0 overflow-hidden relative">
                            {project.images?.[0] ? (
@@ -400,7 +434,7 @@ const FreelancerProfile = () => {
                           <h3 className="text-xl font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{project.title}</h3>
                           <p className="text-sm text-slate-500 font-semibold leading-relaxed mb-4 line-clamp-2">{project.description}</p>
                           <div className="flex flex-wrap gap-2">
-                             {project.skillsUsed.map(s => (
+                             {project.skillsUsed.map((s: { name: string }) => (
                                <span key={s.name} className="text-[10px] font-black uppercase px-3 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100 group-hover:border-blue-100 group-hover:text-blue-400 transition-all">
                                  {s.name}
                                </span>

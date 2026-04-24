@@ -8,6 +8,15 @@ import { Plus, Users01 } from '@untitledui/icons';
 import useAuth from '@/hooks/useAuth';
 import api from '@/lib/api';
 
+interface Freelancer {
+  fullName: string;
+  matchPercent: number;
+  profile?: {
+    preferredJobType?: string;
+    profilePicLink?: string;
+  };
+}
+
 const BusinessDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -15,7 +24,7 @@ const BusinessDashboard = () => {
     totalHired: 0,
     pendingProposals: 0
   });
-  const [recommendations, setRecommendations] = useState([]);
+  const [recommendations, setRecommendations] = useState<Freelancer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,7 +51,7 @@ const BusinessDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  const formatFreelancerData = (freelancer) => {
+  const formatFreelancerData = (freelancer: Freelancer) => {
     return {
       name: freelancer.fullName,
       role: freelancer.profile?.preferredJobType || "Professional",

@@ -1,10 +1,10 @@
 "use client";
-import { useAuthContext, AuthUser, UserRole, UseAuthReturn } from '../context/AuthContext';
+import { useAuthContext, AuthUser, UserRole, AuthContextType } from '../context/AuthContext';
 
 // Re-export types for backward compatibility
 export type { AuthUser, UserRole };
 
-export interface UseAuthReturnExtended extends UseAuthReturn {
+export interface UseAuthReturnExtended extends AuthContextType {
   // Add any extra fields if needed
 }
 

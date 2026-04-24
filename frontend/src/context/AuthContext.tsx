@@ -12,7 +12,7 @@ export interface AuthUser {
   [key: string]: unknown;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   authenticated: boolean;

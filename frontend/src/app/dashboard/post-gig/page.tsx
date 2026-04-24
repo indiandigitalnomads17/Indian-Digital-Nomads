@@ -68,14 +68,14 @@ const PostGig = () => {
 };
 
 // Internal Sub-components for cleaner code
-const TrustItem = ({ icon, text }) => (
+const TrustItem = ({ icon, text }: { icon: string; text: string }) => (
   <div className="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
     <span className="material-symbols-outlined text-secondary">{icon}</span>
     <span className="text-[11px] font-semibold text-slate-600">{text}</span>
   </div>
 );
 
-const ProTipCard = ({ text }) => (
+const ProTipCard = ({ text }: { text: string }) => (
   <div className="p-5 bg-secondary-container/20 rounded-2xl border border-secondary/10">
     <h4 className="font-headline font-bold text-secondary flex items-center gap-2 mb-2">
       <span className="material-symbols-outlined">lightbulb</span> Pro Tip
@@ -84,7 +84,7 @@ const ProTipCard = ({ text }) => (
   </div>
 );
 
-const GigSummaryCard = ({ title, skills, tier }) => (
+const GigSummaryCard = ({ title, skills, tier }: { title: string; skills: string; tier: string }) => (
   <div className="p-5 bg-surface-container-high rounded-2xl border border-primary/5">
     <h4 className="font-headline font-bold text-primary mb-3">Gig Summary</h4>
     <div className="space-y-3">
@@ -96,7 +96,7 @@ const GigSummaryCard = ({ title, skills, tier }) => (
   </div>
 );
 
-const SummaryRow = ({ label, value, isSecondary }) => (
+const SummaryRow = ({ label, value, isSecondary }: { label: any; value: any; isSecondary?: any }) => (
   <div className="flex justify-between items-center">
     <span className="text-[10px] uppercase font-bold text-slate-400">{label}</span>
     <span className={`text-xs font-semibold ${isSecondary ? 'text-secondary' : ''}`}>{value}</span>
