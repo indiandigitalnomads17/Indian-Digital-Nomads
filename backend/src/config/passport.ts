@@ -8,15 +8,19 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "/api/auth/google/callback",
-      passReqToCallback: true, // Crucial: Allows us to read the 'state' from req
+      // 1. MUST use absolute URL in production or ensure proxy is true
+      callbackURL: process.env.NODE_ENV === "production" 
+        ? "https://indian-digital-nomads.onrender.com/api/auth/google/callback"
+        : "/api/auth/google/callback",
+      passReqToCallback: true,
+      proxy: true, // CRITICAL: Required for Render's HTTPS proxy
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0].value;
-        if (!email) return done(new Error("No email found"));
+        if (!email) return done(null, false, { message: "No email found" });
 
-        // 1. Decode the role from the state parameter sent by the frontend
+        // Decode the role from the state parameter
         const stateStr = req.query.state as string;
         let assignedRole: "CLIENT" | "FREELANCER" = "FREELANCER";
 
@@ -29,7 +33,6 @@ passport.use(
           }
         }
 
-        
         const user = await prisma.user.upsert({
           where: { email },
           update: { googleId: profile.id }, 
@@ -39,28 +42,32 @@ passport.use(
             googleId: profile.id,
             role: assignedRole,
             passwordHash: "", 
+            // Only create profile if your schema requires it
             profile: { create: {} },
           },
         });
 
         return done(null, user);
       } catch (error) {
+        console.error("Passport Strategy Error:", error);
         return done(error as Error);
       }
     }
   )
 );
 
-passport.serializeUser((user, done) => {
-  done(null, (user as PrismaUser).id);
+// 2. Ensure the ID type matches your Prisma schema (String vs Int)
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
 });
 
 passport.deserializeUser(async (id: string, done) => {
   try {
     const user = await prisma.user.findUnique({ where: { id } });
-    // This 'user' will be attached to req.user
+    if (!user) return done(null, false);
     done(null, user); 
   } catch (error) {
+    console.error("Deserialization Error:", error);
     done(error, null);
   }
 });
