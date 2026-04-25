@@ -1,5 +1,6 @@
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as GoogleStrategy, Profile, VerifyCallback } from "passport-google-oauth20";
+import { Request } from "express";
 import prisma from "./prisma"; 
 import { User as PrismaUser } from "@prisma/client";
 
@@ -12,7 +13,7 @@ passport.use(
       passReqToCallback: true,
       proxy: true, 
     },
-    async (req, accessToken, refreshToken, profile, done) => {
+    async (req: Request, accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
         const email = profile.emails?.[0].value;
         if (!email) return done(null, false, { message: "No email found" });
