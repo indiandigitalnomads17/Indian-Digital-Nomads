@@ -67,6 +67,7 @@ app.use((req, res, next) => {
   if (req.user) {
     console.log(`  User: ${(req.user as any).email}`);
   }
+
   
   next();
 });
