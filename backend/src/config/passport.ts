@@ -8,19 +8,15 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // 1. MUST use absolute URL in production or ensure proxy is true
-      callbackURL: process.env.NODE_ENV === "production" 
-        ? "https://indian-digital-nomads.onrender.com/api/auth/google/callback"
-        : "/api/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:5001/api/auth/google/callback",
       passReqToCallback: true,
-      proxy: true, // CRITICAL: Required for Render's HTTPS proxy
+      proxy: true, 
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0].value;
         if (!email) return done(null, false, { message: "No email found" });
 
-        // Decode the role from the state parameter
         const stateStr = req.query.state as string;
         let assignedRole: "CLIENT" | "FREELANCER" = "FREELANCER";
 
@@ -42,7 +38,6 @@ passport.use(
             googleId: profile.id,
             role: assignedRole,
             passwordHash: "", 
-            // Only create profile if your schema requires it
             profile: { create: {} },
           },
         });
@@ -56,7 +51,6 @@ passport.use(
   )
 );
 
-// 2. Ensure the ID type matches your Prisma schema (String vs Int)
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
@@ -67,7 +61,8 @@ passport.deserializeUser(async (id: string, done) => {
     if (!user) return done(null, false);
     done(null, user); 
   } catch (error) {
-    console.error("Deserialization Error:", error);
     done(error, null);
   }
 });
+
+export default passport;
