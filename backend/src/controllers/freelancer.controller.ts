@@ -228,7 +228,7 @@ export const getPrivateFreelancerProfile = async (req: Request, res: Response) =
 export const addProject = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
-    const { title, description, projectUrl, skills, completedAt } = req.body;
+    const { title, description, links, skills, completedAt } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     const userProfile = await prisma.profile.findUnique({ where: { userId } });
@@ -253,7 +253,7 @@ export const addProject = async (req: Request, res: Response) => {
         profileId: userProfile.id,
         title,
         description,
-        projectUrl,
+        links: links ? JSON.parse(links) : [],
         videoUrl: uploadedVideoUrl,
         completedAt: completedAt ? new Date(completedAt) : new Date(), 
         images: {

@@ -47,7 +47,7 @@ model Project {
   profileId   String
   title       String
   description String?
-  projectUrl  String?
+  links       String[]       @default([])
   videoUrl    String?
   completedAt DateTime?
   profile     Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)

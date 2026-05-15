@@ -13,6 +13,7 @@ interface Project {
   id: string;
   title: string;
   description: string;
+  links?: string[];
   images: { url: string }[];
   skillsUsed: { name: string }[];
 }
@@ -284,7 +285,7 @@ const FreelancerProfile = () => {
                        </div>
                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Hourly Rate ($)</label>
+                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Hourly Rate (₹)</label>
                             <input 
                               type="number" 
                               value={formData.hourlyRate}
@@ -366,7 +367,7 @@ const FreelancerProfile = () => {
                       </div>
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Standard Rate</p>
-                        <p className="text-base font-bold text-slate-900">${profile?.profile?.hourlyRate || '0'}/hr</p>
+                        <p className="text-base font-bold text-slate-900">₹{profile?.profile?.hourlyRate || '0'}/hr</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -433,13 +434,22 @@ const FreelancerProfile = () => {
                         <div className="flex-1 py-1">
                           <h3 className="text-xl font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{project.title}</h3>
                           <p className="text-sm text-slate-500 font-semibold leading-relaxed mb-4 line-clamp-2">{project.description}</p>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 mb-4">
                              {project.skillsUsed.map((s: { name: string }) => (
                                <span key={s.name} className="text-[10px] font-black uppercase px-3 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100 group-hover:border-blue-100 group-hover:text-blue-400 transition-all">
                                  {s.name}
                                </span>
                              ))}
                           </div>
+                          {project.links && project.links.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {project.links.map((link: string, idx: number) => (
+                                <a key={idx} href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] font-black uppercase px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[10px]">link</span> Link {idx + 1}
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                      </div>
                    ))

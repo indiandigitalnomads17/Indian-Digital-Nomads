@@ -14,6 +14,7 @@ initSocket(httpServer, sessionMiddleware);
 
 prisma.$connect()
   .then(() => {
+    console.log("database connected");
     const PORT = process.env.PORT || 8000;
     httpServer.listen(PORT, () => {
       console.log(`⚙️ Server & Sockets running at port : ${PORT}`);

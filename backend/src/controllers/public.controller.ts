@@ -207,7 +207,7 @@ export const getProjectDetails = async (req: Request, res: Response) => {
         id: true,
         title: true,
         description: true,
-        projectUrl: true, 
+        links: true, 
         videoUrl: true,   
         completedAt: true,
         skillsUsed: {

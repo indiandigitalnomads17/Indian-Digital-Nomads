@@ -19,9 +19,7 @@ const prismaClientSingleton = () => {
 
   const pool = new Pool({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false, // required for Render
-    },
+    ...(isProduction ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   const adapter = new PrismaPg(pool);

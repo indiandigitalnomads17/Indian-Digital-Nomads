@@ -15,7 +15,7 @@ const AddProject = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    projectUrl: '',
+    links: [''],
     skills: [] as string[],
     completedAt: '',
     screenshots: [] as File[],
@@ -42,7 +42,8 @@ const AddProject = () => {
       const payload = new FormData();
       payload.append('title', formData.title);
       payload.append('description', formData.description);
-      payload.append('projectUrl', formData.projectUrl);
+      const validLinks = formData.links.filter(link => link.trim() !== '');
+      payload.append('links', JSON.stringify(validLinks));
       payload.append('completedAt', formData.completedAt);
       payload.append('skills', JSON.stringify(formData.skills));
       
@@ -104,15 +105,46 @@ const AddProject = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Project URL (Optional)</label>
-                    <input
-                      type="url"
-                      value={formData.projectUrl}
-                      onChange={e => setFormData({ ...formData, projectUrl: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                      placeholder="https://..."
-                    />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pl-1">
+                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Project Links (Optional)</label>
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData({ ...formData, links: [...formData.links, ''] })}
+                        className="text-[10px] font-black uppercase text-blue-600 tracking-widest hover:text-blue-700"
+                      >
+                        + Add Link
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {formData.links.map((link, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="url"
+                            value={link}
+                            onChange={e => {
+                              const newLinks = [...formData.links];
+                              newLinks[index] = e.target.value;
+                              setFormData({ ...formData, links: newLinks });
+                            }}
+                            className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
+                            placeholder="https://..."
+                          />
+                          {formData.links.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newLinks = formData.links.filter((_, i) => i !== index);
+                                setFormData({ ...formData, links: newLinks });
+                              }}
+                              className="px-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center"
+                            >
+                              <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Completion Date</label>

@@ -36,9 +36,7 @@ export const sessionMiddleware = session({
   store: new pgSession({
     conString: process.env.DATABASE_URL,
     tableName: "Session",
-    ssl: {
-      rejectUnauthorized: false
-    }
+    ...(process.env.NODE_ENV === "production" ? { ssl: { rejectUnauthorized: false } } : {})
   }),
   secret: process.env.SESSION_SECRET || "your_nomad_secret",
   resave: false,
