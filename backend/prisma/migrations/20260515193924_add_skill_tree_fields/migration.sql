@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Skill" ADD COLUMN     "tier" INTEGER NOT NULL DEFAULT 1;

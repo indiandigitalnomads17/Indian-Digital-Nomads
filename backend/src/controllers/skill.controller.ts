@@ -5,18 +5,29 @@ export const getSkillTree = async (req: Request, res: Response) => {
   try {
     const skills = await prisma.skill.findMany({
       where: {
-        parentId: null, // Get only top-level categories
-      },
-      include: {
-        subSkills: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        parentId: null, 
       },
       orderBy: {
         name: "asc",
+      },
+      include: {
+        subSkills: {
+          orderBy: {
+            name: "asc",
+          },
+          include: {
+            subSkills: {
+              orderBy: {
+                name: "asc",
+              },
+              select: {
+                id: true,
+                name: true,
+                tier: true,
+              }
+            }
+          }
+        },
       },
     });
 

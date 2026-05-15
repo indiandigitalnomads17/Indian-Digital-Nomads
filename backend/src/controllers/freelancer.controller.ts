@@ -5,12 +5,13 @@ import { User as PrismaUser, JobStatus, ProposalStatus } from "@prisma/client";
 import { freelancerOnboardingSchema } from "../validations/freelancer.schema";
 import { error } from "node:console";
 
+import bannerMapping from "../constants/bannerMapping.json"; 
+
 export const onboardFreelancer = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // 1. Zod Validation (Ensure your schema now includes isHourly, hourlyRate, preferredJobType)
     const validation = freelancerOnboardingSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ errors: validation.error.format() });
@@ -21,7 +22,6 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
       isHourly, hourlyRate, preferredJobType 
     } = validation.data;
 
-    // 2. Handle Media Uploads
     let profilePicUrl: string | undefined;
     let introVideoUrl: string | undefined;
     let bannerUrl: string | undefined;
@@ -37,11 +37,34 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
     }
 
     if (files?.banner?.[0]) {
-      const result = await uploadOnCloudinary(files.banner[0].path);
+      const result = await uploadOnCloudinary(files.banner[0].path); //agar custom banner upload krna ho to
       if (result) bannerUrl = result.secure_url;
+    } else { //dedicated banner mapping logic if no custom banner uploaded
+      const skillIds = JSON.parse(skills);
+      if (skillIds.length > 0) {
+        const firstSkill = await prisma.skill.findUnique({
+          where: { id: skillIds[0] },
+          include: { 
+            parent: { 
+              include: { parent: true } 
+            } 
+          }
+        });
+
+        //jo first skill hogi , uske parent ka banner lga denge
+        const rootParentName = firstSkill?.parent?.parent?.name || 
+                               firstSkill?.parent?.name || 
+                               firstSkill?.name;
+
+        //pre uploaded banner ka link is file mai se 
+        bannerUrl = (bannerMapping as Record<string, string>)[rootParentName || ""] || 
+                    bannerMapping.DEFAULT;
+      } else {
+        bannerUrl = bannerMapping.DEFAULT;
+      }
     }
 
-    // 3. Database Transaction
+
     const [updatedUser, updatedProfile] = await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
@@ -55,12 +78,11 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
           location,
           latitude: Number(latitude),
           longitude: Number(longitude),
-          // --- NEW FIELDS ---
           isHourly: Boolean(isHourly), 
           hourlyRate: hourlyRate ? Number(hourlyRate) : null,
           preferredJobType,
           profilePicLink: profilePicUrl || undefined,
-          bannerLink: bannerUrl || undefined,
+          bannerLink: bannerUrl, 
           videoLink: introVideoUrl || undefined,
           skills: {
             set: [], 
@@ -94,7 +116,6 @@ export const getPrivateFreelancerProfile = async (req: Request, res: Response) =
         phoneNumber: true,
         role: true,
         createdAt: true,
-        // 1. Detailed Profile & Portfolio
         profile: {
           select: {
             id: true,
@@ -112,14 +133,29 @@ export const getPrivateFreelancerProfile = async (req: Request, res: Response) =
               select: { 
                 id: true, 
                 name: true, 
-                parent: { select: { name: true } } 
+                tier: true,
+                parent: { 
+                  select: { 
+                    id: true,
+                    name: true, 
+                    tier: true,
+                    parent: { select: { id: true, name: true, tier: true } } // Grandparent (Tier 1)
+                  } 
+                } 
               }
             },
             projects: {
               orderBy: { completedAt: 'desc' },
               include: { 
                 images: true,
-                skillsUsed: { select: { name: true } }
+                skillsUsed: { 
+                  select: { 
+                    id: true,
+                    name: true,
+                    tier: true,
+                    parent: { select: { name: true, parent: { select: { name: true } } } }
+                  } 
+                }
               }
             }
           }
@@ -192,14 +228,12 @@ export const getPrivateFreelancerProfile = async (req: Request, res: Response) =
 export const addProject = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
-    // 1. Added completedAt to the destructuring
     const { title, description, projectUrl, skills, completedAt } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     const userProfile = await prisma.profile.findUnique({ where: { userId } });
     if (!userProfile) return res.status(404).json({ error: "Profile not found" });
 
-    // 2. Handle Screenshots & Video (same as before)
     const screenshotUrls = [];
     if (files?.screenshots) {
       for (const file of files.screenshots) {
@@ -214,7 +248,6 @@ export const addProject = async (req: Request, res: Response) => {
       uploadedVideoUrl = result?.secure_url;
     }
 
-    // 3. Create Project with Date parsing
     const newProject = await prisma.project.create({
       data: {
         profileId: userProfile.id,
@@ -222,7 +255,6 @@ export const addProject = async (req: Request, res: Response) => {
         description,
         projectUrl,
         videoUrl: uploadedVideoUrl,
-        // Parse the string date from the frontend into a Date object
         completedAt: completedAt ? new Date(completedAt) : new Date(), 
         images: {
           create: screenshotUrls.map(url => ({ url }))
@@ -233,7 +265,14 @@ export const addProject = async (req: Request, res: Response) => {
       },
       include: { 
         images: true,
-        skillsUsed: { select: { name: true } }
+        skillsUsed: { 
+          select: { 
+            id: true,
+            name: true, 
+            tier: true,
+            parent: { select: { name: true, parent: { select: { name: true } } } }
+          } 
+        }
       }
     });
 
@@ -244,7 +283,6 @@ export const addProject = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to add project" });
   }
 };
-
 export const getFreelancerDashboardStats = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
@@ -293,21 +331,25 @@ export const getRecommendedJobs = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
 
-    // 1. Get user profile for location and skills
     const userProfile = await prisma.profile.findUnique({
       where: { userId },
       include: { skills: { select: { id: true } } }
     });
 
     if (!userProfile || !userProfile.latitude || !userProfile.longitude) {
-      // If no location, just return recent open jobs
       const recentJobs = await prisma.job.findMany({
         where: { status: JobStatus.OPEN },
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
           client: { select: { fullName: true } },
-          skillsRequired: { select: { name: true } }
+          skillsRequired: { 
+            select: { 
+              id: true, 
+              name: true,
+              parent: { select: { id: true, parent: { select: { id: true } } } }
+            } 
+          }
         }
       });
       return res.status(200).json({ success: true, data: recentJobs });
@@ -316,7 +358,6 @@ export const getRecommendedJobs = async (req: Request, res: Response) => {
     const { latitude, longitude } = userProfile;
     const skillIds = userProfile.skills.map(s => s.id);
 
-    // 2. Simple bounding box matching (reusing logic from matcher.service)
     const RADIUS_KM = 50;
     const degToKm = 111;
 
@@ -334,15 +375,27 @@ export const getRecommendedJobs = async (req: Request, res: Response) => {
       },
       include: {
         client: { select: { fullName: true } },
-        skillsRequired: { select: { name: true } }
+        skillsRequired: { 
+          select: { 
+            id: true, 
+            name: true,
+            parent: { select: { id: true, parent: { select: { id: true } } } }
+          } 
+        }
       },
       orderBy: { createdAt: "desc" },
       take: 20
     });
 
-    // 3. Mark match level (rough heuristic)
     const dataWithMatch = recommendedJobs.map(job => {
-      const matchCount = job.skillsRequired.filter(s => skillIds.includes((s as any).id)).length;
+      const matchCount = job.skillsRequired.filter(s => {
+        if (skillIds.includes(s.id)) return true;
+        if (s.parent && skillIds.includes(s.parent.id)) return true;
+        if (s.parent?.parent && skillIds.includes(s.parent.parent.id)) return true;
+        
+        return false;
+      }).length;
+      
       const matchPercent = skillIds.length > 0 ? (matchCount / job.skillsRequired.length) * 100 : 0;
       return { ...job, matchPercent: Math.round(matchPercent) };
     });
