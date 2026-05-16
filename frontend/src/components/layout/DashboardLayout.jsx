@@ -6,8 +6,11 @@ import NotificationBell from '../common/NotificationBell';
 import { Button } from '@/components/base/buttons/button';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Plus } from '@untitledui/icons';
+import useAuth from '@/hooks/useAuth';
 
 const DashboardLayout = ({ children }) => {
+  const { user } = useAuth();
+
   return (
     <div className="bg-surface text-on-surface min-h-screen font-body flex flex-col lg:flex-row">
       {/* Mobile Header */}
@@ -36,16 +39,18 @@ const DashboardLayout = ({ children }) => {
       </div>
 
       {/* Floating Action Button */}
-      <Tooltip title="Post a new gig to attract talent">
-        <Button 
-          className="fixed bottom-8 right-8 shadow-2xl z-[100] hover:scale-105 active:scale-95 transition-all"
-          color="primary"
-          size="lg"
-          iconLeading={Plus}
-        >
-          Post a New Gig
-        </Button>
-      </Tooltip>
+      {user?.role === 'CLIENT' && (
+        <Tooltip title="Post a new gig to attract talent">
+          <Button 
+            className="fixed bottom-8 right-8 shadow-2xl z-[100] hover:scale-105 active:scale-95 transition-all"
+            color="primary"
+            size="lg"
+            iconLeading={Plus}
+          >
+            Post a New Gig
+          </Button>
+        </Tooltip>
+      )}
     </div>
   );
 };

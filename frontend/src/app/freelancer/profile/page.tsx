@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Avatar } from '@/components/base/avatar/avatar';
+import { Button } from '@/components/base/buttons/button';
 
 type UserRole = 'CLIENT' | 'FREELANCER';
 type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -339,7 +340,7 @@ const FreelancerProfile = () => {
   return (
     <DashboardLayout>
       <main className="pt-8 pb-20">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
             <div className="h-48 relative group">
               {bannerPreview ? (
@@ -377,10 +378,10 @@ const FreelancerProfile = () => {
                   )}
                 </div>
                 <div className="flex gap-4">
-                  <button onClick={() => { setIsEditing(!isEditing); setErrors({}); }} className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm hover:border-blue-400 transition-all flex items-center gap-2">
+                  <Button onClick={() => { setIsEditing(!isEditing); setErrors({}); }} color="secondary" size="sm" className="bg-white text-black border border-slate-200 rounded-xl hover:border-blue-400 hover:text-white hover:bg-blue-500 transition-all">
                     <span className="material-symbols-outlined text-md">{isEditing ? 'close' : 'edit'}</span>
                     {isEditing ? 'Cancel Edit' : 'Edit Profile'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -430,7 +431,7 @@ const FreelancerProfile = () => {
                           <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Home Base (Location)</label>
                           <div className="flex gap-2">
                             <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="City, Country" className="flex-1 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold" />
-                            <button type="button" onClick={detectLocation} disabled={detecting} className="px-4 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center"><span className="material-symbols-outlined text-lg">{detecting ? 'sync' : 'my_location'}</span></button>
+                            <Button type="button" onClick={detectLocation} isLoading={detecting} className="bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white"><span className="material-symbols-outlined text-lg">my_location</span></Button>
                           </div>
                        </div>
 
@@ -510,14 +511,15 @@ const FreelancerProfile = () => {
                             {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                           </select>
                           
-                          <button
+                          <Button
                             type="button"
                             onClick={handleAddSkillFromChain}
-                            disabled={!(selectedParentId || selectedSubId || selectedLeafId)}
-                            className="px-5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase border border-blue-500 shadow-md disabled:opacity-50 hover:bg-blue-700 transition-all flex items-center justify-center"
+                            isDisabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                            color="primary"
+                            className="px-5 rounded-xl uppercase shadow-md flex items-center justify-center"
                           >
                             Add
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -546,7 +548,7 @@ const FreelancerProfile = () => {
                   </div>
 
                   <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <button type="submit" disabled={submitting} className="px-12 py-3.5 bg-blue-600 text-white rounded-xl font-black text-sm shadow-xl shadow-blue-500/30 uppercase tracking-widest">{submitting ? 'Saving Changes...' : 'Update Professional Profile'}</button>
+                    <Button type="submit" isLoading={submitting} color="secondary" size="xl" className="rounded-xl font-black shadow-xl shadow-blue-500/30 uppercase tracking-widest">{submitting ? 'Saving Changes...' : 'Update Professional Profile'}</Button>
                   </div>
                 </form>
               ) : (
@@ -654,7 +656,7 @@ const FreelancerProfile = () => {
                  <div className="space-y-4">
                     <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                       <h2 className="text-xl font-black text-slate-900">Showcase</h2>
-                      <button onClick={() => router.push('/freelancer/profile/add-project')} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1"><span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project</button>
+                      <Button onClick={() => router.push('/freelancer/profile/add-project')} color="secondary" size="sm" className="rounded-xl text-xs font-black uppercase tracking-wider"><span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project</Button>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
@@ -798,9 +800,9 @@ const FreelancerProfile = () => {
                   <span className="material-symbols-outlined text-blue-400 text-5xl mb-6 flex group-hover:scale-110 transition-transform">auto_awesome</span>
                   <h3 className="text-2xl font-black tracking-tight mb-3">Nomad Network</h3>
                   <p className="text-slate-400 text-sm font-semibold leading-relaxed mb-8">You are currently visible to top local clients in your area.</p>
-                  <button className="w-full py-4 bg-white text-[#0B1C30] rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-white/5">
+                  <Button color="secondary" className="w-full py-4 bg-white text-[#0B1C30] rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-white/5">
                     View Network
-                  </button>
+                  </Button>
                </div>
             </div>
           </div>

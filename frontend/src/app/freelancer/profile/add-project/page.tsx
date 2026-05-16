@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/base/buttons/button';
 
 interface SkillNode {
   id: string;
@@ -163,7 +164,7 @@ const AddProject = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-10">
             <div className="mb-8">
               <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Showcase New Project</h1>
@@ -199,13 +200,14 @@ const AddProject = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pl-1">
                       <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Project Links (Optional)</label>
-                      <button 
+                      <Button 
                         type="button" 
+                        color="link-color"
                         onClick={() => setFormData({ ...formData, links: [...formData.links, ''] })}
-                        className="text-[10px] font-black uppercase text-blue-600 tracking-widest hover:text-blue-700"
+                        className="text-[10px] font-black uppercase text-blue-600 tracking-widest hover:text-blue-700 p-0"
                       >
                         + Add Link
-                      </button>
+                      </Button>
                     </div>
                     <div className="space-y-2">
                       {formData.links.map((link, index) => (
@@ -219,19 +221,20 @@ const AddProject = () => {
                               setFormData({ ...formData, links: newLinks });
                             }}
                             className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                            placeholder="https://github.com/your-repo"
+                            placeholder="https://deployedproject.com"
                           />
                           {formData.links.length > 1 && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 const newLinks = formData.links.filter((_, i) => i !== index);
                                 setFormData({ ...formData, links: newLinks });
                               }}
-                              className="px-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center border border-red-100"
+                              color="tertiary-destructive"
+                              className="px-3 rounded-xl flex items-center justify-center border-red-100"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
-                            </button>
+                            </Button>
                           )}
                         </div>
                       ))}
@@ -294,14 +297,15 @@ const AddProject = () => {
                           <option value="">-- Choose Expertise --</option>
                           {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                         </select>
-                        <button
+                        <Button
                           type="button"
                           onClick={handleAddSkillFromChain}
-                          disabled={!(selectedParentId || selectedSubId || selectedLeafId)}
-                          className="px-4 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-md disabled:opacity-50 flex items-center justify-center border border-blue-500"
+                          isDisabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                          color="primary"
+                          className="px-4 rounded-xl uppercase transition-all shadow-md flex items-center justify-center border-blue-500"
                         >
                           Add
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -371,20 +375,22 @@ const AddProject = () => {
               </div>
 
               <div className="flex gap-4 pt-6 border-t border-slate-100">
-                <button
+                <Button
                   type="button"
                   onClick={() => router.back()}
-                  className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+                  color="tertiary"
+                  className="px-8 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-red-500 hover:text-white hover:border-red-500 rounded-xl uppercase tracking-widest active:scale-95 transition-all"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className={`flex-1 py-3 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  isLoading={loading}
+                  color="primary"
+                  className="flex-1 py-3 rounded-xl uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
                 >
                   {loading ? 'Publishing showcase instance...' : 'Publish Project'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
