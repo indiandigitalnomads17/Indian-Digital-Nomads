@@ -12,7 +12,7 @@ passport.use(
       passReqToCallback: true,
       proxy: true, 
     },
-    async (req, accessToken, refreshToken, profile, done) => {
+    async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
         const email = profile.emails?.[0].value;
         if (!email) return done(null, false, { message: "No email found" });
