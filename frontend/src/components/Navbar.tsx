@@ -44,7 +44,7 @@ export const Navbar = () => {
                         {authenticated ? (
                             <>
                                 <Button 
-                                    href={user?.role === "FREELANCER" ? "/freelancer/profile" : "/dashboard"}
+                                    href={user?.role === "FREELANCER" ? "/freelancer/profile" : "/client"}
                                     color="secondary"
                                     size="sm"
                                 >

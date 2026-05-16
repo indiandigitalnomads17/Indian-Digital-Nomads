@@ -51,7 +51,7 @@ export const submitProposal = async (req: Request, res: Response) => {
           userId: job.clientId,
           type: "PROPOSAL_RECEIVED",
           message: `New nomad proposal for "${job.title}" at ₹${bidAmount}`,
-          link: `/dashboard/client/proposals/${proposal.id}`
+          link: `/client/proposals/${proposal.id}`
         });
       } catch (bgError) {
         console.error("❌ Notification background task failed:", bgError);

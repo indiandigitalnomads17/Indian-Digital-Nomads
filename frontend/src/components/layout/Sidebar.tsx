@@ -11,10 +11,10 @@ const Sidebar = () => {
   const isClient = user?.role === 'CLIENT';
 
   const clientLinks = [
-    { name: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
-    { name: 'Active Gigs', href: '/dashboard/active', icon: 'work' },
-    { name: 'Post a Gig', href: '/dashboard/post-gig', icon: 'add_circle' },
-    { name: 'Payments', href: '/dashboard/payments', icon: 'payments' },
+    { name: 'Dashboard', href: '/client', icon: 'dashboard' },
+    { name: 'Active Gigs', href: '/client/active', icon: 'work' },
+    { name: 'Post a Gig', href: '/client/post-gig', icon: 'add_circle' },
+    { name: 'Payments', href: '/client/payments', icon: 'payments' },
   ];
 
   const freelancerLinks = [

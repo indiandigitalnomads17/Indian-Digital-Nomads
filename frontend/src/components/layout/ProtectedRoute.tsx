@@ -52,7 +52,7 @@ function AuthLoadingSpinner() {
  * Usage (Next.js App Router):
  *
  * ```tsx
- * // app/dashboard/layout.tsx
+ * // app/client/layout.tsx
  * import ProtectedRoute from '@/components/layout/ProtectedRoute';
  *
  * export default function DashboardLayout({ children }) {

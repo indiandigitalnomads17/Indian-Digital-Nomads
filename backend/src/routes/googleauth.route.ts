@@ -28,7 +28,7 @@ router.get(
     });
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const targetPath = user.role === 'CLIENT' ? '/dashboard' : '/freelancer';
+    const targetPath = user.role === 'CLIENT' ? '/client' : '/freelancer';
     const redirectUrl = `${frontendUrl}${targetPath}`;
     
     console.log(`[Google Auth] Redirecting user to: ${redirectUrl}`);

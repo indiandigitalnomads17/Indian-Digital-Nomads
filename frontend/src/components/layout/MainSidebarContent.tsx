@@ -27,10 +27,10 @@ export const MainSidebarContent = () => {
     const isClient = user?.role === "CLIENT";
 
     const clientItems: NavItemType[] = [
-        { label: "Dashboard", href: "/dashboard", icon: Home01 },
-        { label: "Active Gigs", href: "/dashboard/active", icon: Briefcase01 },
-        { label: "Post a Gig", href: "/dashboard/post-gig", icon: Plus },
-        { label: "Payments", href: "/dashboard/payments", icon: CreditCard01 },
+        { label: "Dashboard", href: "/client", icon: Home01 },
+        { label: "Active Gigs", href: "/client/active", icon: Briefcase01 },
+        { label: "Post a Gig", href: "/client/post-gig", icon: Plus },
+        { label: "Payments", href: "/client/payments", icon: CreditCard01 },
     ];
 
     const freelancerItems: NavItemType[] = [

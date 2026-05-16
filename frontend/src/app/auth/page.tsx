@@ -72,12 +72,12 @@ export default function AuthPage() {
       await refreshUser();
 
       if (userRole === 'CLIENT') {
-        router.push('/dashboard');
+        router.push('/client');
       } else if (userRole === 'FREELANCER') {
         router.push('/freelancer');
       } else {
         // Fallback to state role if backend doesn't provide it
-        router.push(role === 'CLIENT' ? '/dashboard' : '/freelancer');
+        router.push(role === 'CLIENT' ? '/client' : '/freelancer');
       }
 
     } catch (err: any) {
@@ -123,7 +123,7 @@ export default function AuthPage() {
               </label>
               <input
                 type="text"
-                placeholder="Arpit Singh"
+                placeholder="John Doe"
                 value={formData.fullName}
                 className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
                   fieldErrors.fullName ? 'border-red-400' : 'border-transparent'
