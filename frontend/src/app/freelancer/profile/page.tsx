@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Avatar } from '@/components/base/avatar/avatar';
 
 type UserRole = 'CLIENT' | 'FREELANCER';
 type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -359,13 +360,18 @@ const FreelancerProfile = () => {
 
             <div className="px-8 pb-8">
               <div className="relative -mt-16 mb-6 flex justify-between items-end">
-                <div className="w-32 h-32 rounded-3xl bg-white p-2 shadow-xl relative group/avatar">
-                  <div className="w-full h-full rounded-2xl bg-blue-100 flex items-center justify-center text-4xl font-black text-blue-600 overflow-hidden">
-                    {profilePicPreview ? <img src={profilePicPreview} alt="Profile" className="w-full h-full object-cover" /> : profile?.fullName?.charAt(0)}
-                  </div>
+                <div className="relative group/avatar inline-flex rounded-full shadow-xl">
+                  <Avatar 
+                    size="2xl"
+                    src={profilePicPreview || undefined}
+                    initials={profile?.fullName?.charAt(0)}
+                    alt="Profile"
+                    rounded
+                    contentClassName="bg-blue-100 text-blue-600"
+                  />
                   {isEditing && (
-                    <label className="absolute inset-2 rounded-2xl bg-black/50 flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover/avatar:opacity-100 transition-all text-white text-[10px] font-bold text-center p-1">
-                      <span className="material-symbols-outlined text-lg mb-0.5">add_a_photo</span>Update Pic
+                    <label className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover/avatar:opacity-100 transition-all text-white z-10">
+                      <span className="material-symbols-outlined text-lg">add_a_photo</span>
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => handleMediaChange(e, 'profilePic')} />
                     </label>
                   )}

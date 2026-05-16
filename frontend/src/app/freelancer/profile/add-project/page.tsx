@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/layout/Sidebar';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 interface SkillNode {
   id: string;
@@ -162,10 +162,8 @@ const AddProject = () => {
   const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <Sidebar />
-      <main className="pl-72 pt-32 pr-8 pb-20">
-        <div className="max-w-3xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-10">
             <div className="mb-8">
               <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Showcase New Project</h1>
@@ -391,8 +389,7 @@ const AddProject = () => {
             </form>
           </div>
         </div>
-      </main>
-    </div>
+    </DashboardLayout>
   );
 };
 
