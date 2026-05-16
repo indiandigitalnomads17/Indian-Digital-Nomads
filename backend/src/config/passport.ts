@@ -1,4 +1,4 @@
-import passport from "passport";
+import passport, { DoneCallback } from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import prisma from "./prisma"; 
 import { User as PrismaUser } from "@prisma/client";
@@ -55,7 +55,7 @@ passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser(async (id: string, done) => {
+passport.deserializeUser(async (id: string, done:  DoneCallback) => {
   try {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return done(null, false);
