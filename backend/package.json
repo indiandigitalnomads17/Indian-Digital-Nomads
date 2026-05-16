@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon -r dotenv/config src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.ts",
+    "start": "node dotenv/config src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma generate"
   },
