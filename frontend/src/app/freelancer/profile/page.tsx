@@ -91,6 +91,11 @@ interface ProfileData {
     userId: string;
     bio?: string | null;
     location?: string | null;
+    
+    // --- ADD THESE TWO LINES HERE ---
+    latitude?: number | null;
+    longitude?: number | null;
+    
     hourlyRate?: number | string | null; 
     isHourly: boolean;
     preferredJobType: JobType;
@@ -109,7 +114,6 @@ interface ProfileData {
     reviewsRec: number;
   };
 }
-
 const FreelancerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
