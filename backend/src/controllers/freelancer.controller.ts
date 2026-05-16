@@ -37,9 +37,11 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
     }
 
     if (files?.banner?.[0]) {
-      const result = await uploadOnCloudinary(files.banner[0].path); //agar custom banner upload krna ho to
+      // User uploaded a custom banner layout
+      const result = await uploadOnCloudinary(files.banner[0].path);
       if (result) bannerUrl = result.secure_url;
-    } else { //dedicated banner mapping logic if no custom banner uploaded
+    } else { 
+      // Dedicated banner mapping logic if no custom banner uploaded
       const skillIds = JSON.parse(skills);
       if (skillIds.length > 0) {
         const firstSkill = await prisma.skill.findUnique({
@@ -51,15 +53,30 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
           }
         });
 
-        //jo first skill hogi , uske parent ka banner lga denge
-        const rootParentName = firstSkill?.parent?.parent?.name || 
-                               firstSkill?.parent?.name || 
-                               firstSkill?.name;
+        // SAFE HIERARCHY RESOLVER: Dynamically find the root name based on tier
+        let rootParentName = "";
+        
+        if (firstSkill) {
+          if (firstSkill.tier === 1) {
+            rootParentName = firstSkill.name;
+          } else if (firstSkill.tier === 2) {
+            rootParentName = firstSkill.parent?.name || firstSkill.name;
+          } else if (firstSkill.tier === 3) {
+            rootParentName = firstSkill.parent?.parent?.name || firstSkill.parent?.name || firstSkill.name;
+          }
+        }
 
-        //pre uploaded banner ka link is file mai se 
-        bannerUrl = (bannerMapping as Record<string, string>)[rootParentName || ""] || 
-                    bannerMapping.DEFAULT;
-      } else {
+        // Clean up any accidental leading/trailing spaces
+        const targetKey = rootParentName.trim();
+
+        console.log(`🎯 Resolving banner for skill: "${firstSkill?.name}" -> Root Parent Category: "${targetKey}"`);
+
+        // Pull the pre-uploaded banner link from the JSON file mapping matrix
+        bannerUrl = (bannerMapping as Record<string, string>)[targetKey] || bannerMapping.DEFAULT;
+      } 
+      
+      // Safety net if mapping comes up empty or undefined
+      if (!bannerUrl) {
         bannerUrl = bannerMapping.DEFAULT;
       }
     }

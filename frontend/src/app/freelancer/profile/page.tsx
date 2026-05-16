@@ -4,64 +4,145 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
-interface Skill {
+type UserRole = 'CLIENT' | 'FREELANCER';
+type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+type JobType = 'FIXED_PRICE' | 'HOURLY';
+type ProposalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
+
+interface SkillNode {
   id: string;
   name: string;
+  tier: number;
+  parentId?: string | null;
+  subSkills?: SkillNode[];
+  parent?: {
+    id: string;
+    name: string;
+    tier: number;
+    parent?: { id: string; name: string; tier: number } | null;
+  } | null;
+}
+
+interface ProjectImage {
+  id: string;
+  url: string;
+  altText?: string | null;
+  projectId: string;
 }
 
 interface Project {
   id: string;
+  profileId: string;
+  title: string;
+  description: string | null;
+  links: string[];
+  videoUrl?: string | null;
+  completedAt?: string | null;
+  images: ProjectImage[];
+  skillsUsed: SkillNode[];
+}
+
+interface ActiveJob {
+  id: string;
   title: string;
   description: string;
-  links?: string[];
-  images: { url: string }[];
-  skillsUsed: { name: string }[];
+  status: JobStatus;
+  type: JobType;
+  budget: number | string | null; 
+  estimatedHours?: number | null;
+  createdAt: string;
+  client: { fullName: string; email: string };
+}
+
+interface Proposal {
+  id: string;
+  coverLetter: string;
+  bidAmount: number | string; 
+  estimatedDays?: number | null;
+  status: ProposalStatus;
+  createdAt: string;
+  job: { id: string; title: string; budget: number | string | null };
+}
+
+interface Review {
+  id: string;
+  jobId: string;
+  reviewerId: string;
+  revieweeId: string;
+  rating: number;
+  comment: string | null; 
+  createdAt: string;
+  reviewer: {
+    fullName: string;
+    profile?: { profilePicLink?: string | null } | null;
+  };
+  job: { title: string };
 }
 
 interface ProfileData {
+  id: string;
   fullName: string;
-  phoneNumber?: string;
+  email: string;
+  phoneNumber?: string | null;
+  role: UserRole;
+  createdAt: string;
   profile?: {
-    bio?: string;
-    location?: string;
-    hourlyRate?: string | number;
-    isHourly?: boolean;
-    preferredJobType?: string;
-    skills: Skill[];
-    latitude?: number;
-    longitude?: number;
-    bannerLink?: string;
+    id: string;
+    userId: string;
+    bio?: string | null;
+    location?: string | null;
+    hourlyRate?: number | string | null; 
+    isHourly: boolean;
+    preferredJobType: JobType;
+    bannerLink?: string | null;
+    profilePicLink?: string | null;
+    videoLink?: string | null;
     projects: Project[];
-  };
+    skills: SkillNode[];
+  } | null;
+  jobsAsFreelancer: ActiveJob[];
+  proposals: Proposal[];
+  reviewsRec: Review[];
   _count: {
     jobsAsFreelancer: number;
     proposals: number;
+    reviewsRec: number;
   };
 }
 
 const FreelancerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [allSkills, setAllSkills] = useState<SkillNode[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   
+  const [activeTab, setActiveTab] = useState<'showcase' | 'contracts' | 'proposals' | 'reviews'>('showcase');
+
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [selectedSubId, setSelectedSubId] = useState<string>('');
+  const [selectedLeafId, setSelectedLeafId] = useState<string>('');
+
   const [formData, setFormData] = useState({
     bio: '',
     location: '',
     phoneNumber: '',
     hourlyRate: '',
     isHourly: false,
-    preferredJobType: 'FIXED_PRICE',
-    skills: [] as string[], // IDs of selected skills
+    preferredJobType: 'FIXED_PRICE' as JobType,
+    skills: [] as string[],
     latitude: 0,
     longitude: 0,
   });
   
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
+  const [profilePicPreview, setProfilePicPreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -69,37 +150,88 @@ const FreelancerProfile = () => {
     const fetchData = async () => {
       try {
         const [profileRes, skillsRes] = await Promise.all([
-          api.get('/api/v1/freelancer/get-profile-data'),
+          api.get('/api/v1/freelancer/get-profile-data'), 
           api.get('/api/v1/skills/tree')
         ]);
 
         if (profileRes.data.success) {
-          const data = profileRes.data.data;
+          const data = profileRes.data.data as ProfileData;
           setProfile(data);
           setFormData({
             bio: data.profile?.bio || '',
             location: data.profile?.location || '',
             phoneNumber: data.phoneNumber || '',
-            hourlyRate: data.profile?.hourlyRate || '',
+            hourlyRate: data.profile?.hourlyRate !== undefined && data.profile?.hourlyRate !== null 
+              ? String(data.profile.hourlyRate) 
+              : '',
             isHourly: data.profile?.isHourly || false,
             preferredJobType: data.profile?.preferredJobType || 'FIXED_PRICE',
-            skills: data.profile?.skills.map((s: Skill) => s.id) || [],
+            skills: data.profile?.skills.map((s: SkillNode) => s.id) || [],
             latitude: data.profile?.latitude || 0,
             longitude: data.profile?.longitude || 0,
           });
           setBannerPreview(data.profile?.bannerLink || null);
+          setProfilePicPreview(data.profile?.profilePicLink || null);
+          setVideoPreview(data.profile?.videoLink || null);
         }
         if (skillsRes.data.success) {
           setAllSkills(skillsRes.data.data);
         }
       } catch (err) {
-        console.error("Failed to load profile:", err);
+        console.error("Failed to load secure database datasets:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  const renderSkillHierarchy = (skill: SkillNode) => {
+    const parts: string[] = [];
+    if (skill.parent?.parent?.name) parts.push(skill.parent.parent.name);
+    if (skill.parent?.name) parts.push(skill.parent.name);
+    parts.push(skill.name);
+    return parts.join(' → ');
+  };
+
+  const getSkillPathString = (id: string): string => {
+    for (const parent of allSkills) {
+      if (parent.id === id) return parent.name;
+      if (parent.subSkills) {
+        for (const sub of parent.subSkills) {
+          if (sub.id === id) return `${parent.name} → ${sub.name}`;
+          if (sub.subSkills) {
+            for (const leaf of sub.subSkills) {
+              if (leaf.id === id) return `${parent.name} → ${sub.name} → ${leaf.name}`;
+            }
+          }
+        }
+      }
+    }
+    return 'Loading Marker...';
+  };
+
+  const handleAddSkillFromChain = () => {
+    const targetId = selectedLeafId || selectedSubId || selectedParentId;
+    if (!targetId) return;
+
+    if (!formData.skills.includes(targetId)) {
+      setFormData({
+        ...formData,
+        skills: [...formData.skills, targetId]
+      });
+    }
+    setSelectedLeafId('');
+    setSelectedSubId('');
+    setSelectedParentId('');
+  };
+
+  const handleRemoveSkillTag = (idToRemove: string) => {
+    setFormData({
+      ...formData,
+      skills: formData.skills.filter(id => id !== idToRemove)
+    });
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,22 +250,29 @@ const FreelancerProfile = () => {
       payload.append('latitude', String(formData.latitude));
       payload.append('longitude', String(formData.longitude));
 
-      if (bannerFile) {
-        payload.append('banner', bannerFile);
-      }
+      if (bannerFile) payload.append('banner', bannerFile);
+      if (profilePicFile) payload.append('profilePic', profilePicFile);
+      if (videoFile) payload.append('introVideo', videoFile);
 
       const res = await api.patch('/api/v1/freelancer/onboard', payload);
       if (res.data.success) {
         setIsEditing(false);
-        // Refresh data
+        setBannerFile(null);
+        setProfilePicFile(null);
+        setVideoFile(null);
+        
         const profileRes = await api.get('/api/v1/freelancer/get-profile-data');
-        setProfile(profileRes.data.data);
+        const refreshedData = profileRes.data.data;
+        setProfile(refreshedData);
+        setBannerPreview(refreshedData.profile?.bannerLink || null);
+        setProfilePicPreview(refreshedData.profile?.profilePicLink || null);
+        setVideoPreview(refreshedData.profile?.videoLink || null);
       }
     } catch (err: any) {
       if (err.response?.status === 400 && err.response.data.errors) {
         setErrors(err.response.data.errors);
       } else {
-        console.error("Update failed:", err);
+        console.error("Update error mapping failure:", err);
         alert("Something went wrong. Please check your inputs.");
       }
     } finally {
@@ -153,12 +292,10 @@ const FreelancerProfile = () => {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await response.json();
           const address = data.address;
-          const locationName = address.city || address.town || address.village || address.suburb || address.state_district || address.county || "Unknown District";
+          const locationName = address.city || address.town || address.village || address.suburb || "Unknown District";
           const country = address.country || "";
 
           setFormData({
@@ -168,33 +305,36 @@ const FreelancerProfile = () => {
             location: country ? `${locationName}, ${country}` : locationName
           });
         } catch (err) {
-          console.error("Location error:", err);
+          console.error("Location lookup error:", err);
         } finally {
           setDetecting(false);
         }
       },
       () => {
-        alert("Unable to retrieve your location. Please ensure location permissions are enabled.");
+        alert("Location access denied.");
         setDetecting(false);
       }
     );
   };
 
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'banner' | 'profilePic' | 'video') => {
     const file = e.target.files?.[0];
     if (file) {
-      setBannerFile(file);
-      setBannerPreview(URL.createObjectURL(file));
+      if (type === 'banner') { setBannerFile(file); setBannerPreview(URL.createObjectURL(file)); }
+      if (type === 'profilePic') { setProfilePicFile(file); setProfilePicPreview(URL.createObjectURL(file)); }
+      if (type === 'video') { setVideoFile(file); setVideoPreview(URL.createObjectURL(file)); }
     }
   };
 
-  if (loading) return <div className="p-20 text-center font-bold">Loading your professional profile...</div>;
+  const subSkillOptions = allSkills.find(p => p.id === selectedParentId)?.subSkills || [];
+  const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
+
+  if (loading) return <div className="p-20 text-center font-bold">Loading secure professional profile dashboard...</div>;
 
   return (
     <DashboardLayout>
       <main className="pt-8 pb-20">
         <div className="max-w-5xl mx-auto">
-          {/* Cover / Profile Header */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
             <div className="h-48 relative group">
               {bannerPreview ? (
@@ -202,13 +342,12 @@ const FreelancerProfile = () => {
               ) : (
                 <div className="w-full h-full bg-gradient-to-r from-blue-600 to-indigo-700"></div>
               )}
-              
               {isEditing && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                   <label className="cursor-pointer bg-white/20 backdrop-blur-md px-6 py-2 rounded-xl text-white font-bold border border-white/30 hover:bg-white/30 truncate max-w-[200px]">
                     <span className="material-symbols-outlined align-middle mr-2">photo_camera</span>
                     {bannerFile ? bannerFile.name : 'Change Banner'}
-                    <input type="file" className="hidden" accept="image/*" onChange={handleBannerChange} />
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleMediaChange(e, 'banner')} />
                   </label>
                 </div>
               )}
@@ -216,19 +355,19 @@ const FreelancerProfile = () => {
 
             <div className="px-8 pb-8">
               <div className="relative -mt-16 mb-6 flex justify-between items-end">
-                <div className="w-32 h-32 rounded-3xl bg-white p-2 shadow-xl">
-                  <div className="w-full h-full rounded-2xl bg-blue-100 flex items-center justify-center text-4xl font-black text-blue-600">
-                    {profile?.fullName?.charAt(0)}
+                <div className="w-32 h-32 rounded-3xl bg-white p-2 shadow-xl relative group/avatar">
+                  <div className="w-full h-full rounded-2xl bg-blue-100 flex items-center justify-center text-4xl font-black text-blue-600 overflow-hidden">
+                    {profilePicPreview ? <img src={profilePicPreview} alt="Profile" className="w-full h-full object-cover" /> : profile?.fullName?.charAt(0)}
                   </div>
+                  {isEditing && (
+                    <label className="absolute inset-2 rounded-2xl bg-black/50 flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover/avatar:opacity-100 transition-all text-white text-[10px] font-bold text-center p-1">
+                      <span className="material-symbols-outlined text-lg mb-0.5">add_a_photo</span>Update Pic
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleMediaChange(e, 'profilePic')} />
+                    </label>
+                  )}
                 </div>
                 <div className="flex gap-4">
-                  <button 
-                    onClick={() => {
-                      setIsEditing(!isEditing);
-                      setErrors({});
-                    }}
-                    className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm hover:border-blue-400 transition-all flex items-center gap-2"
-                  >
+                  <button onClick={() => { setIsEditing(!isEditing); setErrors({}); }} className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm hover:border-blue-400 transition-all flex items-center gap-2">
                     <span className="material-symbols-outlined text-md">{isEditing ? 'close' : 'edit'}</span>
                     {isEditing ? 'Cancel Edit' : 'Edit Profile'}
                   </button>
@@ -239,163 +378,245 @@ const FreelancerProfile = () => {
                 <form onSubmit={handleUpdateProfile} className="space-y-8">
                   {Object.keys(errors).length > 0 && (
                     <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                      <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-2">Please fix the following issues:</p>
+                      <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-2">Validation Errors Found:</p>
                       <ul className="list-disc pl-5 space-y-1">
                         {Object.entries(errors).map(([key, val]) => (
                           <li key={key} className="text-xs font-bold text-red-500">
-                             {((val as any)._errors as string[])?.join(', ') || 'Invalid input'}
+                            <span className="capitalize">{key}</span>: {((val as any)._errors as string[])?.join(', ') || 'Invalid parameter'}
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                       <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Professional Tagline</label>
-                       <textarea 
-                          value={formData.bio}
-                          onChange={e => setFormData({...formData, bio: e.target.value})}
-                          className={`w-full px-4 py-3 bg-slate-50 rounded-xl border ${errors.bio ? 'border-red-300 bg-red-50' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold min-h-[120px]`}
-                          placeholder="Passionate digital nomad with expertise in..."
-                       />
-                       {errors.bio && <p className="text-[10px] font-bold text-red-500">{errors.bio._errors?.[0]}</p>}
+                       <div className="flex flex-col space-y-2">
+                         <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Professional Tagline</label>
+                         <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className={`w-full px-4 py-3 bg-slate-50 rounded-xl border ${errors.bio ? 'border-red-300 bg-red-50' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold min-h-[120px]`} placeholder="Passionate expert specializing in..." />
+                       </div>
+
+                       <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                          <label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg text-blue-600">videocam</span> Intro Video Pitch
+                          </label>
+                          <div className="flex items-center gap-4">
+                            <label className="cursor-pointer px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-blue-400 shadow-sm transition-all">
+                              Choose Video File
+                              <input type="file" className="hidden" accept="video/*" onChange={(e) => handleMediaChange(e, 'video')} />
+                            </label>
+                            <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">{videoFile ? videoFile.name : (videoPreview ? 'Active verified profile clip' : 'No clip attached')}</span>
+                          </div>
+                          {videoPreview && (
+                            <div className="mt-2 rounded-xl overflow-hidden bg-black aspect-video max-h-40">
+                              <video src={videoPreview} controls className="w-full h-full" />
+                            </div>
+                          )}
+                       </div>
                     </div>
+
                     <div className="space-y-6">
                        <div className="space-y-2">
-                          <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1 leading-none">Home Base (Location)</label>
+                          <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Home Base (Location)</label>
                           <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={formData.location}
-                              onChange={e => setFormData({...formData, location: e.target.value})}
-                              placeholder="City, Country"
-                              className={`flex-1 px-4 py-3 bg-slate-50 rounded-xl border ${errors.location ? 'border-red-300 bg-red-50' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold`}
-                            />
-                            <button 
-                              type="button"
-                              onClick={detectLocation}
-                              disabled={detecting}
-                              className="px-4 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 text-xs font-black"
-                            >
-                              <span className="material-symbols-outlined text-lg">{detecting ? 'sync' : 'my_location'}</span>
-                            </button>
+                            <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="City, Country" className="flex-1 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold" />
+                            <button type="button" onClick={detectLocation} disabled={detecting} className="px-4 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white transition-all flex items-center"><span className="material-symbols-outlined text-lg">{detecting ? 'sync' : 'my_location'}</span></button>
                           </div>
-                          {errors.location && <p className="text-[10px] font-bold text-red-500">{errors.location._errors?.[0]}</p>}
                        </div>
+
                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Hourly Rate (₹)</label>
-                            <input 
-                              type="number" 
-                              value={formData.hourlyRate}
-                              onChange={e => setFormData({...formData, hourlyRate: e.target.value})}
-                              className={`w-full px-4 py-3 bg-slate-50 rounded-xl border ${errors.hourlyRate ? 'border-red-300' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold`}
-                            />
+                          <div className="flex flex-col space-y-2">
+                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Preferred Structure</label>
+                            <select value={formData.preferredJobType} onChange={e => setFormData({...formData, preferredJobType: e.target.value as JobType})} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold">
+                              <option value="FIXED_PRICE">Fixed Price Contracts</option>
+                              <option value="HOURLY">Hourly Billing Layout</option>
+                            </select>
                           </div>
-                          <div>
-                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Phone</label>
-                            <input 
-                              type="text" 
-                              value={formData.phoneNumber}
-                              onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
-                              className={`w-full px-4 py-3 bg-slate-50 rounded-xl border ${errors.phoneNumber ? 'border-red-300' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold`}
-                            />
+                          <div className="flex flex-col space-y-2">
+                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Phone Contact</label>
+                            <input type="text" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold" />
                           </div>
+                       </div>
+
+                       <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-black uppercase text-slate-700 tracking-tight">Open to Hourly Freelancing</p>
+                            </div>
+                            <button type="button" onClick={() => setFormData({...formData, isHourly: !formData.isHourly})} className={`w-12 h-6 flex items-center rounded-full p-1 transition-all ${formData.isHourly ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'}`}><span className="bg-white w-4 h-4 rounded-full shadow-md"></span></button>
+                          </div>
+                          {formData.isHourly && (
+                            <div className="space-y-1">
+                              <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Hourly Compensation Rate (₹)</label>
+                              <input type="number" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: e.target.value})} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold" />
+                            </div>
+                          )}
                        </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Expertise</label>
-                    <div className={`flex flex-wrap gap-2 p-6 bg-slate-50 rounded-2xl border ${errors.skills ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}>
-                       {allSkills.map((skill: Skill) => (
-                         <button
-                           key={skill.id}
-                           type="button"
-                           onClick={() => {
-                             const newSkills = formData.skills.includes(skill.id) 
-                               ? formData.skills.filter(id => id !== skill.id)
-                               : [...formData.skills, skill.id];
-                             setFormData({...formData, skills: newSkills});
-                           }}
-                           className={`px-4 py-2 rounded-full text-xs font-black transition-all ${
-                             formData.skills.includes(skill.id)
-                             ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                             : 'bg-white text-slate-500 border border-slate-200 hover:border-blue-300'
-                           }`}
-                         >
-                           {skill.name}
-                         </button>
-                       ))}
+                  <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div>
+                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Core Expertise</label>
+                      <p className="text-[11px] text-slate-400 font-semibold mb-3">Traverse categories down to sub-skills or specific nodes. Node tracking is fully optional.</p>
                     </div>
-                    {errors.skills && <p className="text-[10px] font-bold text-red-500">{errors.skills._errors?.[0]}</p>}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                      <div className="flex flex-col space-y-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Parent Category</span>
+                        <select 
+                          value={selectedParentId} 
+                          onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); }}
+                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
+                        >
+                          <option value="">-- Choose Category --</option>
+                          {allSkills.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col space-y-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Sub Category</span>
+                        <select 
+                          value={selectedSubId} 
+                          disabled={!selectedParentId}
+                          onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); }}
+                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                        >
+                          <option value="">-- Choose Sub-Skill --</option>
+                          {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col space-y-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Specific Leaf Skill (Optional)</span>
+                        <div className="flex gap-2">
+                          <select 
+                            value={selectedLeafId} 
+                            disabled={!selectedSubId}
+                            onChange={(e) => setSelectedLeafId(e.target.value)}
+                            className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                          >
+                            <option value="">-- Choose Expertise --</option>
+                            {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                          </select>
+                          
+                          <button
+                            type="button"
+                            onClick={handleAddSkillFromChain}
+                            disabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                            className="px-5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase border border-blue-500 shadow-md disabled:opacity-50 hover:bg-blue-700 transition-all flex items-center justify-center"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-200/60 mt-4">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Currently Stacked Skills ({formData.skills.length})</p>
+                      <div className="flex flex-col space-y-2">
+                        {formData.skills.map((id) => (
+                          <div key={id} className="flex justify-between items-center px-4 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-sm transition-all">
+                            <span className="tracking-tight text-slate-600">{getSkillPathString(id)}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveSkillTag(id)} 
+                              className="w-5 h-5 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 inline-flex items-center justify-center font-bold text-[11px] border transition-all"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {formData.skills.length === 0 && (
+                          <p className="text-xs text-slate-400 font-bold italic pl-1">No hierarchy paths selected yet.</p>
+                        )}
+                      </div>
+                      {errors.skills && <p className="text-[10px] font-bold text-red-500 mt-2">{errors.skills._errors?.[0]}</p>}
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <button 
-                      type="submit" 
-                      disabled={submitting}
-                      className={`px-12 py-3.5 bg-blue-600 text-white rounded-xl font-black text-sm shadow-xl shadow-blue-500/30 active:scale-95 transition-all uppercase tracking-widest ${submitting ? 'opacity-50' : ''}`}
-                    >
-                      {submitting ? 'Saving Changes...' : 'Update Professional Profile'}
-                    </button>
+                    <button type="submit" disabled={submitting} className="px-12 py-3.5 bg-blue-600 text-white rounded-xl font-black text-sm shadow-xl shadow-blue-500/30 uppercase tracking-widest">{submitting ? 'Saving Changes...' : 'Update Professional Profile'}</button>
                   </div>
                 </form>
               ) : (
                 <div className="space-y-8">
                   <div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">{profile?.fullName}</h1>
+                    <p className="text-sm font-bold text-slate-400 mb-2 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">mail</span>{profile?.email}
+                    </p>
                     <p className="text-lg text-slate-500 font-semibold max-w-2xl leading-relaxed">{profile?.profile?.bio || "No professional tagline added yet."}</p>
                   </div>
                   
                   <div className="flex flex-wrap gap-8 py-8 border-y border-slate-100">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                        <span className="material-symbols-outlined text-2xl">location_on</span>
-                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100"><span className="material-symbols-outlined text-2xl">location_on</span></div>
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Current Base</p>
-                        <p className={`text-base font-bold ${profile?.profile?.location ? 'text-slate-900' : 'text-slate-400 italic'}`}>
-                          {profile?.profile?.location || "Not Set"}
-                        </p>
+                        <p className="text-base font-bold text-slate-900">{profile?.profile?.location || "Not Set"}</p>
                       </div>
                     </div>
+                    {profile?.profile?.isHourly && (
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100"><span className="material-symbols-outlined text-2xl">local_atm</span></div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Standard Rate</p>
+                          <p className="text-base font-bold text-slate-900">₹{profile?.profile?.hourlyRate || '0'}/hr</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
-                        <span className="material-symbols-outlined text-2xl">local_atm</span>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Standard Rate</p>
-                        <p className="text-base font-bold text-slate-900">₹{profile?.profile?.hourlyRate || '0'}/hr</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
-                        <span className="material-symbols-outlined text-2xl">event_available</span>
-                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100"><span className="material-symbols-outlined text-2xl">event_available</span></div>
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Job Preference</p>
-                        <p className="text-base font-bold text-slate-900">
-                          {profile?.profile?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}
-                        </p>
+                        <p className="text-base font-bold text-slate-900">{profile?.profile?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Verified Contact Phone</p>
+                      <p className="text-sm font-bold text-slate-800">{profile?.phoneNumber || <span className="text-slate-400 italic">Not set yet</span>}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Hourly Discovery Visibility</p>
+                      <p className="text-sm font-bold text-slate-800">
+                        {profile?.profile?.isHourly ? (
+                          <span className="text-green-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active in Directories</span>
+                        ) : (
+                          <span className="text-slate-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300"></span> Off-grid (Fixed Only)</span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Account Registration Date</p>
+                      <p className="text-sm font-bold text-slate-800">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {profile?.profile?.videoLink && (
+                    <div className="space-y-3">
+                       <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>Video Pitch</h3>
+                       <div className="max-w-xl rounded-2xl overflow-hidden bg-slate-950 aspect-video shadow-md"><video src={profile.profile.videoLink} controls className="w-full h-full" /></div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
                     <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                       Technical Stack
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      Verified Hierarchy Expertise Stack
                     </h3>
-                    <div className="flex flex-wrap gap-2.5">
+                    <div className="flex flex-col space-y-2">
                        {profile?.profile?.skills.map(skill => (
-                         <span key={skill.id} className="px-5 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-black border border-slate-200 shadow-sm">
-                           {skill.name}
-                         </span>
+                         <div key={skill.id} className="px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-black shadow-sm flex items-center gap-2">
+                           <span className="material-symbols-outlined text-blue-600 text-base">layers</span>
+                           <span className="tracking-tight">{renderSkillHierarchy(skill)}</span>
+                         </div>
                        ))}
                        {(!profile?.profile?.skills || profile?.profile?.skills.length === 0) && (
-                         <p className="text-xs text-slate-400 font-bold italic">No expertise markers defined yet.</p>
+                         <p className="text-xs text-slate-400 font-bold italic">No expertise structural markers mapped yet.</p>
                        )}
                     </div>
                   </div>
@@ -405,101 +626,164 @@ const FreelancerProfile = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Portfolio Section */}
             <div className="md:col-span-2 space-y-6">
-               <div className="flex justify-between items-center bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Showcase</h2>
-                  <button 
-                    onClick={() => router.push('/freelancer/profile/add-project')}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 hover:scale-105 transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest"
-                  >
-                    <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project
-                  </button>
+               <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex gap-2 overflow-x-auto">
+                 {[
+                   { id: 'showcase', label: 'Portfolio Showcase', count: profile?.profile?.projects.length || 0 },
+                   { id: 'contracts', label: 'Active Contracts', count: profile?.jobsAsFreelancer.length || 0 },
+                   { id: 'proposals', label: 'Sent Proposals', count: profile?.proposals.length || 0 },
+                   { id: 'reviews', label: 'Client Reviews', count: profile?.reviewsRec.length || 0 },
+                 ].map((tab) => (
+                   <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 min-w-[120px] py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 bg-transparent'}`}>
+                     {tab.label} ({tab.count})
+                   </button>
+                 ))}
                </div>
 
-               <div className="grid grid-cols-1 gap-6">
-                 {profile?.profile?.projects && profile.profile.projects.length > 0 ? (
-                   profile.profile.projects.map((project: Project) => (
-                     <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex gap-8 items-start hover:border-blue-400 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group">
-                        <div className="w-48 h-32 rounded-2xl bg-slate-100 shrink-0 overflow-hidden relative">
-                           {project.images?.[0] ? (
-                             <img src={project.images[0].url} alt={project.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                           ) : (
-                             <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                <span className="material-symbols-outlined text-5xl">image</span>
-                             </div>
-                           )}
-                           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all"></div>
-                        </div>
-                        <div className="flex-1 py-1">
-                          <h3 className="text-xl font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{project.title}</h3>
-                          <p className="text-sm text-slate-500 font-semibold leading-relaxed mb-4 line-clamp-2">{project.description}</p>
-                          <div className="flex flex-wrap gap-2 mb-4">
-                             {project.skillsUsed.map((s: { name: string }) => (
-                               <span key={s.name} className="text-[10px] font-black uppercase px-3 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100 group-hover:border-blue-100 group-hover:text-blue-400 transition-all">
-                                 {s.name}
-                               </span>
-                             ))}
-                          </div>
-                          {project.links && project.links.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {project.links.map((link: string, idx: number) => (
-                                <a key={idx} href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] font-black uppercase px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[10px]">link</span> Link {idx + 1}
-                                </a>
-                              ))}
+               {activeTab === 'showcase' && (
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                      <h2 className="text-xl font-black text-slate-900">Showcase</h2>
+                      <button onClick={() => router.push('/freelancer/profile/add-project')} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1"><span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project</button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {profile?.profile?.projects && profile.profile.projects.length > 0 ? (
+                        profile.profile.projects.map((project: Project) => (
+                          <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 flex gap-6 items-start hover:border-blue-400 transition-all group shadow-sm">
+                            <div className="w-40 h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 relative">
+                              {project.images?.[0] ? <img src={project.images[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><span className="material-symbols-outlined text-4xl">image</span></div>}
                             </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-tight">{project.title}</h3>
+                              <p className="text-xs text-slate-500 mb-3 line-clamp-2">{project.description}</p>
+                              <div className="flex flex-col space-y-1">
+                                {project.skillsUsed.map(s => (
+                                  <span key={s.id} className="text-[10px] font-bold text-slate-500 truncate bg-slate-50 px-2 py-0.5 rounded-md border max-w-xs block">
+                                    {renderSkillHierarchy(s)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No showcase elements attached.</div>
+                      )}
+                    </div>
+                 </div>
+               )}
+
+               {activeTab === 'contracts' && (
+                 <div className="space-y-4">
+                    {profile?.jobsAsFreelancer && profile.jobsAsFreelancer.length > 0 ? (
+                      profile.jobsAsFreelancer.map((job: ActiveJob) => (
+                        <div key={job.id} className="bg-white rounded-3xl p-6 border border-l-4 border-l-blue-600 border-slate-100 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest rounded-md">{job.status}</span>
+                              <span className="text-[10px] text-slate-400 font-bold">{new Date(job.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <h3 className="text-lg font-black text-slate-900 tracking-tight">{job.title}</h3>
+                            <p className="text-xs text-slate-400 font-medium">Client: <span className="text-slate-600 font-bold">{job.client.fullName}</span> ({job.client.email})</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xl font-black text-slate-900">₹{Number(job.budget).toLocaleString()}</p>
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{job.type === 'HOURLY' ? '/hr billing setup' : 'Fixed Milestone total'}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No operational contracts running currently.</div>
+                    )}
+                 </div>
+               )}
+
+               {activeTab === 'proposals' && (
+                 <div className="space-y-4">
+                    {profile?.proposals && profile.proposals.length > 0 ? (
+                      profile.proposals.map((prop: Proposal) => (
+                        <div key={prop.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex justify-between items-center">
+                          <div>
+                            <h4 className="text-sm font-black text-slate-900 mb-1">{prop.job.title}</h4>
+                            <p className="text-xs text-slate-400 font-medium">Job Target Budget: <span className="font-bold text-slate-600">₹{Number(prop.job.budget).toLocaleString()}</span></p>
+                            <p className="text-[10px] font-semibold text-slate-400 mt-2">Submitted {new Date(prop.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-base font-black text-slate-900">Bid: ₹{Number(prop.bidAmount).toLocaleString()}</p>
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider mt-1 ${prop.status === 'ACCEPTED' ? 'bg-green-50 text-green-600 border border-green-100' : prop.status === 'REJECTED' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                              {prop.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No active business inquiries placed.</div>
+                    )}
+                 </div>
+               )}
+
+               {activeTab === 'reviews' && (
+                 <div className="space-y-4">
+                    {profile?.reviewsRec && profile.reviewsRec.length > 0 ? (
+                      profile.reviewsRec.map((review: Review) => (
+                        <div key={review.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden">
+                                {review.reviewer.profile?.profilePicLink ? <img src={review.reviewer.profile.profilePicLink} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">{review.reviewer.fullName.charAt(0)}</div>}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black text-slate-900 leading-none mb-1">{review.reviewer.fullName}</h4>
+                                <p className="text-[11px] text-slate-400 font-medium">Contract: {review.job.title}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center text-amber-500 gap-0.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                              <span className="material-symbols-outlined text-sm fill-current">star</span>
+                              <span className="text-xs font-black">{review.rating}</span>
+                            </div>
+                          </div>
+                          {review.comment && (
+                            <p className="text-xs text-slate-600 font-semibold italic bg-slate-50/50 p-3 rounded-xl border border-slate-50 leading-relaxed">"{review.comment}"</p>
                           )}
                         </div>
-                     </div>
-                   ))
-                 ) : (
-                   <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-                      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="material-symbols-outlined text-4xl text-slate-300">architecture</span>
-                      </div>
-                      <p className="text-slate-400 font-black uppercase text-xs tracking-[0.2em]">Start building your legacy</p>
-                      <button 
-                        onClick={() => router.push('/freelancer/profile/add-project')}
-                        className="mt-6 px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
-                      >
-                        Upload First Project
-                      </button>
-                   </div>
-                 )}
-               </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No verified client feedback compiled.</div>
+                    )}
+                 </div>
+               )}
             </div>
 
-            {/* Sidebar Stats */}
             <div className="space-y-8">
                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-8 pb-4 border-b border-slate-50">Impact Metrics</h3>
                   <div className="space-y-8">
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Jobs Completed</p>
-                           <p className="text-2xl font-black text-slate-900">{profile?._count.jobsAsFreelancer}</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Historical Jobs</p>
+                           <p className="text-2xl font-black text-slate-900">{profile?._count.jobsAsFreelancer || 0}</p>
                         </div>
                         <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">task_alt</span>
                      </div>
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Delivery Rate</p>
-                           <p className="text-2xl font-black text-green-600">98%</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Client Reviews</p>
+                           <p className="text-2xl font-black text-green-600">{profile?._count.reviewsRec || 0}</p>
                         </div>
-                        <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">speed</span>
+                        <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">reviews</span>
                      </div>
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Proposals</p>
-                           <p className="text-2xl font-black text-slate-900">{profile?._count.proposals}</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Proposals</p>
+                           <p className="text-2xl font-black text-slate-900">{profile?._count.proposals || 0}</p>
                         </div>
                         <span className="material-symbols-outlined text-orange-500 bg-orange-50 p-2 rounded-lg">send</span>
                      </div>
                   </div>
                </div>
 
-               <div className="bg-[#0B1C30] p-10 rounded-3xl text-white shadow-2xl shadow-slate-300 relative overflow-hidden group">
+               <div className="bg-[#0B1C30] p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl -mr-16 -mt-16"></div>
                   <span className="material-symbols-outlined text-blue-400 text-5xl mb-6 flex group-hover:scale-110 transition-transform">auto_awesome</span>
                   <h3 className="text-2xl font-black tracking-tight mb-3">Nomad Network</h3>

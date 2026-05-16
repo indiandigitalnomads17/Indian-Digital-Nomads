@@ -1,13 +1,13 @@
 {
-  "Web Development": "",
-  "Graphics & Design": "",
-  "Digital Marketing": "",
-  "Video & Animation": "",
-  "Writing & Translation": "",
-  "Data Science & AI": "",
-  "Mobile Development": "",
-  "Cybersecurity": "",
-  "Business & Admin": "",
-  "Emerging Tech & Web3": "",
+  "Web Development": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907339/Web_D_wg6sws.png",
+  "Graphics & Design": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907317/Graphics_and_Design_q09gmk.png",
+  "Digital Marketing": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907299/Digital_Marketing_mqcls7.png",
+  "Video & Animation": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907286/Video_and_Animation_iggpqa.png",
+  "Writing & Translation": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907266/Writing_and_Translation_vkcq1v.png",
+  "Data Science & AI": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907242/Data_Science_and_Ai_vf4xk2.png",
+  "Mobile Development": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907226/Mobile_oeego6.png",
+  "Cybersecurity": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907211/Cybersecurity_d7c8qm.png",
+  "Business & Admin": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907191/Buisness_frgxm5.png",
+  "Emerging Tech & Web3": "https://res.cloudinary.com/deqbgili0/image/upload/v1778907120/web_3_xams5g.png",
   "DEFAULT": ""
 }

@@ -4,14 +4,22 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 
-interface Skill {
+interface SkillNode {
   id: string;
   name: string;
+  tier: number;
+  parentId?: string | null;
+  subSkills?: SkillNode[];
 }
 
 const AddProject = () => {
-  const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [allSkills, setAllSkills] = useState<SkillNode[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [selectedSubId, setSelectedSubId] = useState<string>('');
+  const [selectedLeafId, setSelectedLeafId] = useState<string>('');
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -20,19 +28,101 @@ const AddProject = () => {
     completedAt: '',
     screenshots: [] as File[],
   });
+
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
-    const fetchSkills = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/api/v1/skills/tree');
-        if (res.data.success) setAllSkills(res.data.data);
+        const [profileRes, skillsRes] = await Promise.all([
+          api.get('/api/v1/freelancer/get-profile-data'),
+          api.get('/api/v1/skills/tree')
+        ]);
+
+        if (profileRes.data.success && skillsRes.data.success) {
+          const userSkillsList = profileRes.data.data.profile?.skills || [];
+          const userSkillIds = new Set(userSkillsList.map((s: any) => s.id));
+          const fullTree = skillsRes.data.data as SkillNode[];
+
+          const filteredTree = fullTree.map(parent => {
+            const filteredSubs = (parent.subSkills || []).map(sub => {
+              const filteredLeaves = (sub.subSkills || []).filter(leaf => userSkillIds.has(leaf.id));
+              if (userSkillIds.has(sub.id) || filteredLeaves.length > 0) {
+                return { ...sub, subSkills: filteredLeaves };
+              }
+              return null;
+            }).filter(Boolean) as SkillNode[];
+
+            if (userSkillIds.has(parent.id) || filteredSubs.length > 0) {
+              return { ...parent, subSkills: filteredSubs };
+            }
+            return null;
+          }).filter(Boolean) as SkillNode[];
+
+          setAllSkills(filteredTree);
+        }
       } catch (err) {
-        console.error("Failed to fetch skills:", err);
+        console.error("Failed to load skills data:", err);
       }
     };
-    fetchSkills();
+    fetchData();
   }, []);
+
+  const getSkillPathString = (id: string): string => {
+    for (const parent of allSkills) {
+      if (parent.id === id) return parent.name;
+      if (parent.subSkills) {
+        for (const sub of parent.subSkills) {
+          if (sub.id === id) return `${parent.name} → ${sub.name}`;
+          if (sub.subSkills) {
+            for (const leaf of sub.subSkills) {
+              if (leaf.id === id) return `${parent.name} → ${sub.name} → ${leaf.name}`;
+            }
+          }
+        }
+      }
+    }
+    return 'Loading...';
+  };
+
+  const handleAddSkillFromChain = () => {
+    const targetId = selectedLeafId || selectedSubId || selectedParentId;
+    if (!targetId) return;
+
+    if (!formData.skills.includes(targetId)) {
+      setFormData({
+        ...formData,
+        skills: [...formData.skills, targetId]
+      });
+    }
+    setSelectedLeafId('');
+    setSelectedSubId('');
+    setSelectedParentId('');
+  };
+
+  const handleRemoveSkillTag = (idToRemove: string) => {
+    setFormData({
+      ...formData,
+      skills: formData.skills.filter(id => id !== idToRemove)
+    });
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFormData({ ...formData, screenshots: Array.from(e.target.files) });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +132,7 @@ const AddProject = () => {
       const payload = new FormData();
       payload.append('title', formData.title);
       payload.append('description', formData.description);
+      
       const validLinks = formData.links.filter(link => link.trim() !== '');
       payload.append('links', JSON.stringify(validLinks));
       payload.append('completedAt', formData.completedAt);
@@ -51,22 +142,24 @@ const AddProject = () => {
         payload.append('screenshots', file);
       });
 
+      if (videoFile) {
+        payload.append('projectVideo', videoFile);
+      }
+
       const res = await api.post('/api/v1/freelancer/add-project', payload);
       if (res.data.success) {
         router.push('/freelancer/profile');
       }
     } catch (err) {
       console.error("Failed to add project:", err);
+      alert("Something went wrong while publishing your showcase item.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFormData({ ...formData, screenshots: Array.from(e.target.files) });
-    }
-  };
+  const subSkillOptions = allSkills.find(p => p.id === selectedParentId)?.subSkills || [];
+  const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -89,7 +182,7 @@ const AddProject = () => {
                     value={formData.title}
                     onChange={e => setFormData({ ...formData, title: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                    placeholder="E.g. E-commerce Website Design"
+                    placeholder="E.g. Full-stack Supply Chain Dashboard Layout"
                   />
                 </div>
 
@@ -100,11 +193,11 @@ const AddProject = () => {
                     value={formData.description}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold min-h-[120px]"
-                    placeholder="Describe your role and the outcome..."
+                    placeholder="Describe your architecture role, technical stack, and overall outcome milestones..."
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pl-1">
                       <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Project Links (Optional)</label>
@@ -128,7 +221,7 @@ const AddProject = () => {
                               setFormData({ ...formData, links: newLinks });
                             }}
                             className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                            placeholder="https://..."
+                            placeholder="https://github.com/your-repo"
                           />
                           {formData.links.length > 1 && (
                             <button
@@ -137,7 +230,7 @@ const AddProject = () => {
                                 const newLinks = formData.links.filter((_, i) => i !== index);
                                 setFormData({ ...formData, links: newLinks });
                               }}
-                              className="px-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center"
+                              className="px-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center border border-red-100"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
                             </button>
@@ -146,6 +239,7 @@ const AddProject = () => {
                       ))}
                     </div>
                   </div>
+                  
                   <div className="space-y-2">
                     <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Completion Date</label>
                     <input
@@ -158,29 +252,103 @@ const AddProject = () => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Skills Applied</label>
-                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                    {allSkills.map(skill => (
-                      <button
-                        key={skill.id}
-                        type="button"
-                        onClick={() => {
-                          const newSkills = formData.skills.includes(skill.id)
-                            ? formData.skills.filter(id => id !== skill.id)
-                            : [...formData.skills, skill.id];
-                          setFormData({ ...formData, skills: newSkills });
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all ${
-                          formData.skills.includes(skill.id)
-                            ? 'bg-blue-600 text-white shadow-md'
-                            : 'bg-white text-slate-500 border border-slate-200 hover:border-blue-200'
-                        }`}
-                      >
-                        {skill.name}
-                      </button>
-                    ))}
+                <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                  <div>
+                    <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Skills Mapped to This Project</label>
+                    <p className="text-[11px] text-slate-400 font-semibold mb-3">Select skills from your profile to connect to this project.</p>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="flex flex-col space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Parent Category</span>
+                      <select 
+                        value={selectedParentId} 
+                        onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); }}
+                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
+                      >
+                        <option value="">-- Choose Category --</option>
+                        {allSkills.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Sub Category</span>
+                      <select 
+                        value={selectedSubId} 
+                        disabled={!selectedParentId}
+                        onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); }}
+                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                      >
+                        <option value="">-- Choose Sub-Skill --</option>
+                        {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Specific Leaf Skill (Optional)</span>
+                      <div className="flex gap-2">
+                        <select 
+                          value={selectedLeafId} 
+                          disabled={!selectedSubId}
+                          onChange={(e) => setSelectedLeafId(e.target.value)}
+                          className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                        >
+                          <option value="">-- Choose Expertise --</option>
+                          {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleAddSkillFromChain}
+                          disabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                          className="px-4 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-md disabled:opacity-50 flex items-center justify-center border border-blue-500"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200/60 mt-4">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Connected Project Stack ({formData.skills.length})</p>
+                    <div className="flex flex-col space-y-2">
+                      {formData.skills.map((id) => (
+                        <div key={id} className="flex justify-between items-center px-4 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-sm">
+                          <span className="tracking-tight text-slate-600">{getSkillPathString(id)}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => handleRemoveSkillTag(id)} 
+                            className="w-5 h-5 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 inline-flex items-center justify-center font-bold text-[11px] border transition-all"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                      {formData.skills.length === 0 && (
+                        <p className="text-xs text-slate-400 font-bold italic pl-1">No technologies linked yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2 pl-1">
+                    <span className="material-symbols-outlined text-lg text-blue-600">videocam</span> 
+                    Project Demo Video Clip (Optional)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-blue-400 shadow-sm transition-all">
+                      Choose Video File
+                      <input type="file" className="hidden" accept="video/*" onChange={handleVideoChange} />
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[250px]">
+                      {videoFile ? videoFile.name : 'No demonstration file attached'}
+                    </span>
+                  </div>
+                  {videoPreview && (
+                    <div className="mt-2 rounded-xl overflow-hidden bg-black aspect-video max-h-44">
+                      <video src={videoPreview} controls className="w-full h-full" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -196,8 +364,8 @@ const AddProject = () => {
                       <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">cloud_upload</span>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
                         {formData.screenshots.length > 0 
-                          ? `${formData.screenshots.length} files selected` 
-                          : 'Click to upload screenshots'}
+                          ? `${formData.screenshots.length} showcase snapshots staged` 
+                          : 'Click to upload user interface screenshots'}
                       </p>
                     </div>
                   </div>
@@ -217,7 +385,7 @@ const AddProject = () => {
                   disabled={loading}
                   className={`flex-1 py-3 bg-blue-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {loading ? 'Publishing...' : 'Publish Project'}
+                  {loading ? 'Publishing showcase instance...' : 'Publish Project'}
                 </button>
               </div>
             </form>
