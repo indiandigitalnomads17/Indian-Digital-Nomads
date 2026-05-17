@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { MainSidebarContent } from './MainSidebarContent';
 import { MobileNavigationHeader } from '../application/app-navigation/base-components/mobile-header';
 import NotificationBell from '../common/NotificationBell';
@@ -10,6 +11,7 @@ import useAuth from '@/hooks/useAuth';
 
 const DashboardLayout = ({ children }) => {
   const { user } = useAuth();
+  const router = useRouter();
 
   return (
     <div className="bg-surface text-on-surface min-h-screen font-body flex flex-col lg:flex-row">
@@ -40,12 +42,13 @@ const DashboardLayout = ({ children }) => {
 
       {/* Floating Action Button */}
       {user?.role === 'CLIENT' && (
-        <Tooltip title="Post a new gig to attract talent">
+        <Tooltip title={<span className="text-black font-bold">Post a new gig to attract talent</span>}>
           <Button 
             className="fixed bottom-8 right-8 shadow-2xl z-[100] hover:scale-105 active:scale-95 transition-all"
             color="primary"
             size="lg"
             iconLeading={Plus}
+            onClick={() => router.push('/client/post-gig')}
           >
             Post a New Gig
           </Button>
