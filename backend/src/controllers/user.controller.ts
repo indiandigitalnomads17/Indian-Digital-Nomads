@@ -129,3 +129,41 @@ export const signOut = (req: Request, res: Response) => {
     });
   });
 };
+
+export const setupRole = async (req: Request, res: Response) => {
+  try {
+    const user = req.user as any;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { role } = req.body;
+    if (role !== "CLIENT" && role !== "FREELANCER") {
+      return res.status(400).json({ error: "Invalid role. Must be CLIENT or FREELANCER." });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { role },
+    });
+
+    // Update req.user so passport session gets the fresh role
+    if (req.user) {
+      (req.user as any).role = role;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Role updated successfully",
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        role: updatedUser.role,
+      },
+    });
+  } catch (error) {
+    console.error("Setup Role Error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

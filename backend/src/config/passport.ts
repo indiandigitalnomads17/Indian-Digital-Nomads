@@ -18,16 +18,23 @@ passport.use(
         if (!email) return done(null, false, { message: "No email found" });
 
         const stateStr = req.query.state as string;
-        let assignedRole: "CLIENT" | "FREELANCER" = "FREELANCER";
+        let assignedRole: "CLIENT" | "FREELANCER" = "CLIENT"; // Default to CLIENT if none chosen
+        let roleChosen = false;
 
         if (stateStr) {
           try {
             const decoded = JSON.parse(Buffer.from(stateStr, 'base64').toString());
-            if (decoded.role) assignedRole = decoded.role;
+            if (decoded.role) {
+              assignedRole = decoded.role;
+              roleChosen = true;
+            }
           } catch (e) {
             console.error("State decoding failed", e);
           }
         }
+
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const isNew = !existingUser;
 
         const user = await prisma.user.upsert({
           where: { email },
@@ -41,6 +48,18 @@ passport.use(
             profile: { create: {} },
           },
         });
+
+        // Store properties in req and session so they can be read in the callback route
+        req.isNewUser = isNew;
+        req.roleChosenByUser = roleChosen;
+        if (req.session) {
+          req.session.isNew = isNew;
+          req.session.roleChosen = roleChosen;
+          console.log(`[Passport Strategy] Session ID: ${req.sessionID}`);
+          console.log(`[Passport Strategy] Saved to session & req: isNew=${isNew}, roleChosen=${roleChosen}`);
+        } else {
+          console.log(`[Passport Strategy] Saved to req (session undefined): isNew=${isNew}, roleChosen=${roleChosen}`);
+        }
 
         return done(null, user);
       } catch (error) {

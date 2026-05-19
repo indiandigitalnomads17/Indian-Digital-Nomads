@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,14 @@ export default function AuthPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { refreshUser } = useAuthContext();
   const router = useRouter();
+
+  const handleGoogleLogin = () => {
+    if (isLogin) {
+      window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/google`;
+    } else {
+      window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/google?role=${role}`;
+    }
+  };
 
   const clearErrors = () => {
     setGeneralError('');
@@ -230,9 +239,7 @@ export default function AuthPage() {
         </div>
 
         <button
-          onClick={() =>
-            (window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/google?role=${role}`)
-          }
+          onClick={handleGoogleLogin}
           className="w-full py-3 flex items-center justify-center gap-3 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors"
         >
           <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="google" />
