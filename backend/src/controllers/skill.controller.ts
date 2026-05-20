@@ -6,16 +6,23 @@ export const getSkillTree = async (req: Request, res: Response) => {
     const skills = await prisma.skill.findMany({
       where: {
         parentId: null, 
+        tier: 1,
       },
       orderBy: {
         name: "asc",
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        tier: true,
         subSkills: {
           orderBy: {
             name: "asc",
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            tier: true,
             subSkills: {
               orderBy: {
                 name: "asc",
@@ -24,9 +31,19 @@ export const getSkillTree = async (req: Request, res: Response) => {
                 id: true,
                 name: true,
                 tier: true,
-              }
-            }
-          }
+                subSkills: {
+                  orderBy: {
+                    name: "asc",
+                  },
+                  select: {
+                    id: true,
+                    name: true,
+                    tier: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -37,6 +54,8 @@ export const getSkillTree = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching skill tree:", error);
-    res.status(500).json({ error: "Failed to fetch categories" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
   }
 };

@@ -10,6 +10,7 @@ type UserRole = 'CLIENT' | 'FREELANCER';
 type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 type JobType = 'FIXED_PRICE' | 'HOURLY';
 type ProposalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
+type KycStatus = 'NOT_SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
 interface SkillNode {
   id: string;
@@ -21,7 +22,12 @@ interface SkillNode {
     id: string;
     name: string;
     tier: number;
-    parent?: { id: string; name: string; tier: number } | null;
+    parent?: { 
+      id: string; 
+      name: string; 
+      tier: number;
+      parent?: { id: string; name: string; tier: number } | null;
+    } | null;
   } | null;
 }
 
@@ -81,41 +87,81 @@ interface Review {
   job: { title: string };
 }
 
+interface Verifications {
+  isEmailVerified: boolean;
+  isPhoneNumberVerified: boolean;
+  isGlobalVerified: boolean;
+  kycStatus: KycStatus;
+  kycNotes?: string | null;
+}
+
+interface ReputationScorecard {
+  nomadScore: number;
+  averageRating: string;
+  totalReviewsCount: number;
+}
+
+interface ProposalFunnelMetrics {
+  totalApplicationsSubmitted: number;
+  activeApplications: number;
+  acceptedApplications: number;
+  rejectedApplications: number;
+  withdrawnApplications: number;
+  proposalWinRate: string;
+}
+
+interface WorkHistoryMetrics {
+  activeContracts: number;
+  completedContracts: number;
+  cancelledContracts: number;
+  lifetimeJobsSecured: number;
+}
+
+interface EarningsLedgerSummary {
+  successfulPayoutsCount: number;
+  lifetimeEarningsGross: number;
+  lifetimePlatformFeesPaid: number;
+  lifetimeNetTakeHome: number;
+}
+
 interface ProfileData {
-  id: string;
-  fullName: string;
-  email: string;
-  phoneNumber?: string | null;
-  role: UserRole;
-  createdAt: string;
-  profile?: {
+  account: {
     id: string;
-    userId: string;
+    fullName: string;
+    email: string;
+    phoneNumber?: string | null;
+    role: UserRole;
+    createdAt: string;
+    verifications: Verifications;
+  };
+  reputationScorecard: ReputationScorecard;
+  profileMetadata: {
     bio?: string | null;
     location?: string | null;
-    
-    // --- ADD THESE TWO LINES HERE ---
     latitude?: number | null;
     longitude?: number | null;
-    
-    hourlyRate?: number | string | null; 
-    isHourly: boolean;
-    preferredJobType: JobType;
-    bannerLink?: string | null;
+    rates: {
+      isHourly: boolean;
+      hourlyRate?: number | string | null;
+      preferredJobType: JobType;
+    };
     profilePicLink?: string | null;
+    bannerLink?: string | null;
     videoLink?: string | null;
-    projects: Project[];
-    skills: SkillNode[];
-  } | null;
-  jobsAsFreelancer: ActiveJob[];
-  proposals: Proposal[];
-  reviewsRec: Review[];
-  _count: {
-    jobsAsFreelancer: number;
-    proposals: number;
-    reviewsRec: number;
+    skillsTree: SkillNode[];
   };
+  workHistoryMetrics: WorkHistoryMetrics;
+  proposalFunnelMetrics: ProposalFunnelMetrics;
+  portfolioStore: {
+    totalProjectsListed: number;
+    currentBatch: Project[];
+  };
+  earningsLedgerSummary: EarningsLedgerSummary;
+  reviewsRec: Review[]; // Retained backend array mapping fields
+  proposals: Proposal[];   // Retained custom raw mapping models
+  jobsAsFreelancer: ActiveJob[]; // Retained inline models fallback
 }
+
 const FreelancerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -127,9 +173,11 @@ const FreelancerProfile = () => {
   
   const [activeTab, setActiveTab] = useState<'showcase' | 'contracts' | 'proposals' | 'reviews'>('showcase');
 
-  const [selectedParentId, setSelectedParentId] = useState<string>('');
-  const [selectedSubId, setSelectedSubId] = useState<string>('');
-  const [selectedLeafId, setSelectedLeafId] = useState<string>('');
+  // Strict 4-Tier Filtering Selectors State Elements
+  const [selectedParentId, setSelectedParentId] = useState<string>(''); // Tier 1
+  const [selectedSubId, setSelectedSubId] = useState<string>('');    // Tier 2
+  const [selectedLeafId, setSelectedLeafId] = useState<string>('');   // Tier 3
+  const [selectedAtomicLeafId, setSelectedAtomicLeafId] = useState<string>(''); // Tier 4
 
   const [formData, setFormData] = useState({
     bio: '',
@@ -164,21 +212,21 @@ const FreelancerProfile = () => {
           const data = profileRes.data.data as ProfileData;
           setProfile(data);
           setFormData({
-            bio: data.profile?.bio || '',
-            location: data.profile?.location || '',
-            phoneNumber: data.phoneNumber || '',
-            hourlyRate: data.profile?.hourlyRate !== undefined && data.profile?.hourlyRate !== null 
-              ? String(data.profile.hourlyRate) 
+            bio: data.profileMetadata?.bio || '',
+            location: data.profileMetadata?.location || '',
+            phoneNumber: data.account?.phoneNumber || '',
+            hourlyRate: data.profileMetadata?.rates?.hourlyRate !== undefined && data.profileMetadata?.rates?.hourlyRate !== null 
+              ? String(data.profileMetadata.rates.hourlyRate) 
               : '',
-            isHourly: data.profile?.isHourly || false,
-            preferredJobType: data.profile?.preferredJobType || 'FIXED_PRICE',
-            skills: data.profile?.skills.map((s: SkillNode) => s.id) || [],
-            latitude: data.profile?.latitude || 0,
-            longitude: data.profile?.longitude || 0,
+            isHourly: data.profileMetadata?.rates?.isHourly || false,
+            preferredJobType: data.profileMetadata?.rates?.preferredJobType || 'FIXED_PRICE',
+            skills: data.profileMetadata?.skillsTree.map((s: SkillNode) => s.id) || [],
+            latitude: data.profileMetadata?.latitude || 0,
+            longitude: data.profileMetadata?.longitude || 0,
           });
-          setBannerPreview(data.profile?.bannerLink || null);
-          setProfilePicPreview(data.profile?.profilePicLink || null);
-          setVideoPreview(data.profile?.videoLink || null);
+          setBannerPreview(data.profileMetadata?.bannerLink || null);
+          setProfilePicPreview(data.profileMetadata?.profilePicLink || null);
+          setVideoPreview(data.profileMetadata?.videoLink || null);
         }
         if (skillsRes.data.success) {
           setAllSkills(skillsRes.data.data);
@@ -194,6 +242,7 @@ const FreelancerProfile = () => {
 
   const renderSkillHierarchy = (skill: SkillNode) => {
     const parts: string[] = [];
+    if (skill.parent?.parent?.parent?.name) parts.push(skill.parent.parent.parent.name);
     if (skill.parent?.parent?.name) parts.push(skill.parent.parent.name);
     if (skill.parent?.name) parts.push(skill.parent.name);
     parts.push(skill.name);
@@ -209,6 +258,11 @@ const FreelancerProfile = () => {
           if (sub.subSkills) {
             for (const leaf of sub.subSkills) {
               if (leaf.id === id) return `${parent.name} → ${sub.name} → ${leaf.name}`;
+              if (leaf.subSkills) {
+                for (const atomicLeaf of leaf.subSkills) {
+                  if (atomicLeaf.id === id) return `${parent.name} → ${sub.name} → ${leaf.name} → ${atomicLeaf.name}`;
+                }
+              }
             }
           }
         }
@@ -218,7 +272,7 @@ const FreelancerProfile = () => {
   };
 
   const handleAddSkillFromChain = () => {
-    const targetId = selectedLeafId || selectedSubId || selectedParentId;
+    const targetId = selectedAtomicLeafId || selectedLeafId || selectedSubId || selectedParentId;
     if (!targetId) return;
 
     if (!formData.skills.includes(targetId)) {
@@ -227,6 +281,7 @@ const FreelancerProfile = () => {
         skills: [...formData.skills, targetId]
       });
     }
+    setSelectedAtomicLeafId('');
     setSelectedLeafId('');
     setSelectedSubId('');
     setSelectedParentId('');
@@ -270,9 +325,9 @@ const FreelancerProfile = () => {
         const profileRes = await api.get('/api/v1/freelancer/get-profile-data');
         const refreshedData = profileRes.data.data;
         setProfile(refreshedData);
-        setBannerPreview(refreshedData.profile?.bannerLink || null);
-        setProfilePicPreview(refreshedData.profile?.profilePicLink || null);
-        setVideoPreview(refreshedData.profile?.videoLink || null);
+        setBannerPreview(refreshedData.profileMetadata?.bannerLink || null);
+        setProfilePicPreview(refreshedData.profileMetadata?.profilePicLink || null);
+        setVideoPreview(refreshedData.profileMetadata?.videoLink || null);
       }
     } catch (err: any) {
       if (err.response?.status === 400 && err.response.data.errors) {
@@ -332,8 +387,10 @@ const FreelancerProfile = () => {
     }
   };
 
+  // 4-Tier Destructuring Level Resolvers
   const subSkillOptions = allSkills.find(p => p.id === selectedParentId)?.subSkills || [];
   const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
+  const atomicLeafSkillOptions = leafSkillOptions.find(l => l.id === selectedLeafId)?.subSkills || [];
 
   if (loading) return <div className="p-20 text-center font-bold">Loading secure professional profile dashboard...</div>;
 
@@ -365,7 +422,7 @@ const FreelancerProfile = () => {
                   <Avatar 
                     size="2xl"
                     src={profilePicPreview || undefined}
-                    initials={profile?.fullName?.charAt(0)}
+                    initials={profile?.account?.fullName?.charAt(0)}
                     alt="Profile"
                     rounded
                     contentClassName="bg-blue-100 text-blue-600"
@@ -466,18 +523,19 @@ const FreelancerProfile = () => {
                     </div>
                   </div>
 
+                  {/* Complete 4-Tier Structural Taxonomy Node Entry Dropdown Chain */}
                   <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div>
-                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Core Expertise</label>
-                      <p className="text-[11px] text-slate-400 font-semibold mb-3">Traverse categories down to sub-skills or specific nodes. Node tracking is fully optional.</p>
+                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Core Expertise Mapping</label>
+                      <p className="text-[11px] text-slate-400 font-semibold mb-3">Traverse categories systematically down to specific atomic skill nodes ($Category \rightarrow Parent \rightarrow Sub \rightarrow Leaf$).</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                       <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Parent Category</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Main Category</span>
                         <select 
                           value={selectedParentId} 
-                          onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); }}
+                          onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
                           className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
                         >
                           <option value="">-- Choose Category --</option>
@@ -486,35 +544,48 @@ const FreelancerProfile = () => {
                       </div>
 
                       <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Sub Category</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Parent Skill</span>
                         <select 
                           value={selectedSubId} 
                           disabled={!selectedParentId}
-                          onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); }}
+                          onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
                           className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
                         >
-                          <option value="">-- Choose Sub-Skill --</option>
+                          <option value="">-- Choose Parent Skill --</option>
                           {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                       </div>
 
                       <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Specific Leaf Skill (Optional)</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Sub-Skill</span>
+                        <select 
+                          value={selectedLeafId} 
+                          disabled={!selectedSubId}
+                          onChange={(e) => { setSelectedLeafId(e.target.value); setSelectedAtomicLeafId(''); }}
+                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                        >
+                          <option value="">-- Choose Sub-Skill --</option>
+                          {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col space-y-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">4. Specific Leaf Node</span>
                         <div className="flex gap-2">
                           <select 
-                            value={selectedLeafId} 
-                            disabled={!selectedSubId}
-                            onChange={(e) => setSelectedLeafId(e.target.value)}
+                            value={selectedAtomicLeafId} 
+                            disabled={!selectedLeafId}
+                            onChange={(e) => setSelectedAtomicLeafId(e.target.value)}
                             className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
                           >
-                            <option value="">-- Choose Expertise --</option>
-                            {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                            <option value="">-- Choose Framework / Tool --</option>
+                            {atomicLeafSkillOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                           </select>
                           
                           <Button
                             type="button"
                             onClick={handleAddSkillFromChain}
-                            isDisabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                            isDisabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}
                             color="primary"
                             className="px-5 rounded-xl uppercase shadow-md flex items-center justify-center"
                           >
@@ -525,7 +596,7 @@ const FreelancerProfile = () => {
                     </div>
 
                     <div className="pt-4 border-t border-slate-200/60 mt-4">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Currently Stacked Skills ({formData.skills.length})</p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Currently Stacked Skills Tree ({formData.skills.length})</p>
                       <div className="flex flex-col space-y-2">
                         {formData.skills.map((id) => (
                           <div key={id} className="flex justify-between items-center px-4 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-sm transition-all">
@@ -535,7 +606,7 @@ const FreelancerProfile = () => {
                               onClick={() => handleRemoveSkillTag(id)} 
                               className="w-5 h-5 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 inline-flex items-center justify-center font-bold text-[11px] border transition-all"
                             >
-                              ✕
+                              ⟷
                             </button>
                           </div>
                         ))}
@@ -554,11 +625,30 @@ const FreelancerProfile = () => {
               ) : (
                 <div className="space-y-8">
                   <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">{profile?.fullName}</h1>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-3">
+                      {profile?.account?.fullName}
+                      {profile?.account?.verifications?.isGlobalVerified && (
+                        <span className="material-symbols-outlined text-blue-600 bg-blue-50 p-1 rounded-full text-base border border-blue-200">verified</span>
+                      )}
+                    </h1>
+                    
+                    {/* Security Compliance Ladder Verification Badges Grid */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {profile?.account?.verifications?.isEmailVerified ? '✓ Email Verified' : '⚠ Email Unverified'}
+                      </span>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {profile?.account?.verifications?.isPhoneNumberVerified ? '✓ SMS Linked' : '⚠ SMS Unlinked'}
+                      </span>
+                      <span className="bg-slate-900 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        KYC: {profile?.account?.verifications?.kycStatus}
+                      </span>
+                    </div>
+
                     <p className="text-sm font-bold text-slate-400 mb-2 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">mail</span>{profile?.email}
+                      <span className="material-symbols-outlined text-sm">mail</span>{profile?.account?.email}
                     </p>
-                    <p className="text-lg text-slate-500 font-semibold max-w-2xl leading-relaxed">{profile?.profile?.bio || "No professional tagline added yet."}</p>
+                    <p className="text-lg text-slate-500 font-semibold max-w-2xl leading-relaxed">{profile?.profileMetadata?.bio || "No professional tagline added yet."}</p>
                   </div>
                   
                   <div className="flex flex-wrap gap-8 py-8 border-y border-slate-100">
@@ -566,15 +656,15 @@ const FreelancerProfile = () => {
                       <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100"><span className="material-symbols-outlined text-2xl">location_on</span></div>
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Current Base</p>
-                        <p className="text-base font-bold text-slate-900">{profile?.profile?.location || "Not Set"}</p>
+                        <p className="text-base font-bold text-slate-900">{profile?.profileMetadata?.location || "Not Set"}</p>
                       </div>
                     </div>
-                    {profile?.profile?.isHourly && (
+                    {profile?.profileMetadata?.rates?.isHourly && (
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100"><span className="material-symbols-outlined text-2xl">local_atm</span></div>
                         <div>
                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Standard Rate</p>
-                          <p className="text-base font-bold text-slate-900">₹{profile?.profile?.hourlyRate || '0'}/hr</p>
+                          <p className="text-base font-bold text-slate-900">₹{profile?.profileMetadata?.rates?.hourlyRate || '0'}/hr</p>
                         </div>
                       </div>
                     )}
@@ -582,7 +672,7 @@ const FreelancerProfile = () => {
                       <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100"><span className="material-symbols-outlined text-2xl">event_available</span></div>
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Job Preference</p>
-                        <p className="text-base font-bold text-slate-900">{profile?.profile?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}</p>
+                        <p className="text-base font-bold text-slate-900">{profile?.profileMetadata?.rates?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}</p>
                       </div>
                     </div>
                   </div>
@@ -590,12 +680,12 @@ const FreelancerProfile = () => {
                   <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     <div>
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Verified Contact Phone</p>
-                      <p className="text-sm font-bold text-slate-800">{profile?.phoneNumber || <span className="text-slate-400 italic">Not set yet</span>}</p>
+                      <p className="text-sm font-bold text-slate-800">{profile?.account?.phoneNumber || <span className="text-slate-400 italic">Not set yet</span>}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Hourly Discovery Visibility</p>
                       <p className="text-sm font-bold text-slate-800">
-                        {profile?.profile?.isHourly ? (
+                        {profile?.profileMetadata?.rates?.isHourly ? (
                           <span className="text-green-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active in Directories</span>
                         ) : (
                           <span className="text-slate-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300"></span> Off-grid (Fixed Only)</span>
@@ -604,14 +694,14 @@ const FreelancerProfile = () => {
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Account Registration Date</p>
-                      <p className="text-sm font-bold text-slate-800">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
+                      <p className="text-sm font-bold text-slate-800">{profile?.account?.createdAt ? new Date(profile.account.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
                     </div>
                   </div>
 
-                  {profile?.profile?.videoLink && (
+                  {profile?.profileMetadata?.videoLink && (
                     <div className="space-y-3">
                        <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>Video Pitch</h3>
-                       <div className="max-w-xl rounded-2xl overflow-hidden bg-slate-950 aspect-video shadow-md"><video src={profile.profile.videoLink} controls className="w-full h-full" /></div>
+                       <div className="max-w-xl rounded-2xl overflow-hidden bg-slate-950 aspect-video shadow-md"><video src={profile.profileMetadata.videoLink} controls className="w-full h-full" /></div>
                     </div>
                   )}
 
@@ -621,13 +711,13 @@ const FreelancerProfile = () => {
                       Verified Hierarchy Expertise Stack
                     </h3>
                     <div className="flex flex-col space-y-2">
-                       {profile?.profile?.skills.map(skill => (
+                       {profile?.profileMetadata?.skillsTree.map(skill => (
                          <div key={skill.id} className="px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-black shadow-sm flex items-center gap-2">
                            <span className="material-symbols-outlined text-blue-600 text-base">layers</span>
                            <span className="tracking-tight">{renderSkillHierarchy(skill)}</span>
                          </div>
                        ))}
-                       {(!profile?.profile?.skills || profile?.profile?.skills.length === 0) && (
+                       {(!profile?.profileMetadata?.skillsTree || profile?.profileMetadata?.skillsTree.length === 0) && (
                          <p className="text-xs text-slate-400 font-bold italic">No expertise structural markers mapped yet.</p>
                        )}
                     </div>
@@ -641,10 +731,10 @@ const FreelancerProfile = () => {
             <div className="md:col-span-2 space-y-6">
                <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex gap-2 overflow-x-auto">
                  {[
-                   { id: 'showcase', label: 'Portfolio Showcase', count: profile?.profile?.projects.length || 0 },
-                   { id: 'contracts', label: 'Active Contracts', count: profile?.jobsAsFreelancer.length || 0 },
-                   { id: 'proposals', label: 'Sent Proposals', count: profile?.proposals.length || 0 },
-                   { id: 'reviews', label: 'Client Reviews', count: profile?.reviewsRec.length || 0 },
+                   { id: 'showcase', label: 'Portfolio Showcase', count: profile?.portfolioStore?.totalProjectsListed || 0 },
+                   { id: 'contracts', label: 'Active Contracts', count: profile?.workHistoryMetrics?.activeContracts || 0 },
+                   { id: 'proposals', label: 'Sent Proposals', count: profile?.proposalFunnelMetrics?.totalApplicationsSubmitted || 0 },
+                   { id: 'reviews', label: 'Client Reviews', count: profile?.reputationScorecard?.totalReviewsCount || 0 },
                  ].map((tab) => (
                    <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 min-w-[120px] py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 bg-transparent'}`}>
                      {tab.label} ({tab.count})
@@ -660,8 +750,8 @@ const FreelancerProfile = () => {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
-                      {profile?.profile?.projects && profile.profile.projects.length > 0 ? (
-                        profile.profile.projects.map((project: Project) => (
+                      {profile?.portfolioStore?.currentBatch && profile.portfolioStore.currentBatch.length > 0 ? (
+                        profile.portfolioStore.currentBatch.map((project: Project) => (
                           <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 flex gap-6 items-start hover:border-blue-400 transition-all group shadow-sm">
                             <div className="w-40 h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 relative">
                               {project.images?.[0] ? <img src={project.images[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><span className="material-symbols-outlined text-4xl">image</span></div>}
@@ -769,29 +859,49 @@ const FreelancerProfile = () => {
 
             <div className="space-y-8">
                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-8 pb-4 border-b border-slate-50">Impact Metrics</h3>
-                  <div className="space-y-8">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-8 pb-4 border-b border-slate-50">Operational Analytics</h3>
+                  <div className="space-y-6">
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Historical Jobs</p>
-                           <p className="text-2xl font-black text-slate-900">{profile?._count.jobsAsFreelancer || 0}</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Jobs Secured</p>
+                           <p className="text-2xl font-black text-slate-900">{profile?.workHistoryMetrics?.lifetimeJobsSecured || 0}</p>
                         </div>
                         <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">task_alt</span>
                      </div>
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Client Reviews</p>
-                           <p className="text-2xl font-black text-green-600">{profile?._count.reviewsRec || 0}</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Proposal Win Rate</p>
+                           <p className="text-2xl font-black text-blue-600">{profile?.proposalFunnelMetrics?.proposalWinRate || '0%'}</p>
                         </div>
-                        <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">reviews</span>
+                        <span className="material-symbols-outlined text-purple-500 bg-purple-50 p-2 rounded-lg">trending_up</span>
                      </div>
                      <div className="flex justify-between items-end">
                         <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Proposals</p>
-                           <p className="text-2xl font-black text-slate-900">{profile?._count.proposals || 0}</p>
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Client Feedback</p>
+                           <p className="text-2xl font-black text-green-600">{profile?.reputationScorecard?.totalReviewsCount || 0}</p>
                         </div>
-                        <span className="material-symbols-outlined text-orange-500 bg-orange-50 p-2 rounded-lg">send</span>
+                        <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">reviews</span>
                      </div>
+                  </div>
+               </div>
+
+               {/* Complete High-Density Financial Outflow Earnings Box Card */}
+               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6 pb-4 border-b border-slate-50">Financial Ledger</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-400">Gross Inflow Earnings</span>
+                      <span className="text-slate-800">₹{(profile?.earningsLedgerSummary?.lifetimeEarningsGross || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-400">Platform Comm. Fees</span>
+                      <span className="text-red-500">- ₹{(profile?.earningsLedgerSummary?.lifetimePlatformFeesPaid || 0).toLocaleString()}</span>
+                    </div>
+                    <hr className="border-slate-100" />
+                    <div className="flex justify-between text-sm font-black">
+                      <span className="text-slate-900">Net Take-Home Yield</span>
+                      <span className="text-emerald-600">₹{(profile?.earningsLedgerSummary?.lifetimeNetTakeHome || 0).toLocaleString()}</span>
+                    </div>
                   </div>
                </div>
 
@@ -799,7 +909,13 @@ const FreelancerProfile = () => {
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl -mr-16 -mt-16"></div>
                   <span className="material-symbols-outlined text-blue-400 text-5xl mb-6 flex group-hover:scale-110 transition-transform">auto_awesome</span>
                   <h3 className="text-2xl font-black tracking-tight mb-3">Nomad Network</h3>
-                  <p className="text-slate-400 text-sm font-semibold leading-relaxed mb-8">You are currently visible to top local clients in your area.</p>
+                  <div className="mb-6">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Network Trust Rating</p>
+                    <h4 className="text-3xl font-black text-white tracking-tight flex items-baseline gap-1">
+                      {profile?.reputationScorecard?.nomadScore} <span className="text-xs font-medium text-slate-500">/ 100 PTS</span>
+                    </h4>
+                  </div>
+                  <p className="text-slate-400 text-sm font-semibold leading-relaxed mb-8">You are currently visible to top local clients within your verified coverage zone.</p>
                   <Button color="secondary" className="w-full py-4 bg-white text-[#0B1C30] rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-white/5">
                     View Network
                   </Button>

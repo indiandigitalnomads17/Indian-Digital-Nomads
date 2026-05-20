@@ -284,34 +284,133 @@ export const getRecommendedFreelancers = async (req: Request, res: Response) => 
   }
 };
 
-export const getClientDashboardStats = async (req: Request, res: Response) => {
+export const getClientProfileWithAllStats = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as PrismaUser)?.id;
+    // 1. Safely extract user identity from the passport/auth middleware context
+    const clientId = (req.user as any)?.id;
 
-    const [activeGigs, totalHired, pendingProposals] = await prisma.$transaction([
-      prisma.job.count({
-        where: { clientId: userId, status: "OPEN" }
+    if (!clientId) {
+      return res.status(401).json({ success: false, error: "Unauthorized access token context." });
+    }
+
+    // 2. Fetch the client user record along with verification statuses in parallel with aggregates
+    const [
+      userCore,
+      jobStatusGroups,
+      totalProposalsCount,
+      totalProductsCount,
+      financialAggregates
+    ] = await Promise.all([
+      // Get User Core + Profile Metadata
+      prisma.user.findUnique({
+        where: { id: clientId },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isVerified: true,
+          isEmailVerified: true,
+          isPhoneNumberVerified: true,
+          nomadScore: true,
+          createdAt: true,
+          profile: {
+            select: {
+              profilePicLink: true,
+              location: true
+            }
+          }
+        }
       }),
-      prisma.job.count({
-        where: { clientId: userId, status: { in: ["IN_PROGRESS", "COMPLETED"] } }
+
+      // Count gigs group by operational states (OPEN, IN_PROGRESS, COMPLETED, CANCELLED)
+      prisma.job.groupBy({
+        by: ["status"],
+        where: { clientId },
+        _count: { id: true }
       }),
+
+      // Count all incoming proposals on the client's jobs
       prisma.proposal.count({
-        where: { job: { clientId: userId }, status: "PENDING" }
+        where: {
+          job: { clientId }
+        }
+      }),
+
+      // Count total digital products published by this client instance
+      prisma.product.count({
+        where: { clientId }
+      }),
+
+      // Sum transactional cash flows originating from this client container (senderId)
+      prisma.transaction.aggregate({
+        where: { 
+          senderId: clientId, 
+          status: "SUCCESSFUL" 
+        },
+        _sum: {
+          amount: true,
+          feeAmount: true,
+          netAmount: true
+        }
       })
     ]);
 
-    res.status(200).json({
+    if (!userCore) {
+      return res.status(404).json({ success: false, error: "Client user instance not found." });
+    }
+
+    // 3. Normalize job metric buckets cleanly from database array states
+    const statusMap = { OPEN: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0 };
+    jobStatusGroups.forEach(group => {
+      if (group.status in statusMap) {
+        statusMap[group.status as keyof typeof statusMap] = group._count.id;
+      }
+    });
+
+    // 4. Calculate final values matching frontend key expectations exactly
+    const activeGigsCount = statusMap.OPEN + statusMap.IN_PROGRESS;
+    const totalHiredCount = statusMap.IN_PROGRESS + statusMap.COMPLETED;
+
+    const spentGross = Number(financialAggregates._sum.amount || 0);
+    const feesPaid = Number(financialAggregates._sum.feeAmount || 0);
+    const spentNet = Number(financialAggregates._sum.netAmount || 0);
+
+    // 5. Build up unified dashboard state envelope
+    return res.status(200).json({
       success: true,
       data: {
-        activeGigs,
-        totalHired,
-        pendingProposals
+        account: {
+          fullName: userCore.fullName,
+          email: userCore.email,
+          isVerified: userCore.isVerified,
+          isEmailVerified: userCore.isEmailVerified,
+          isPhoneNumberVerified: userCore.isPhoneNumberVerified,
+          nomadScore: Number(userCore.nomadScore || 0),
+          profilePicLink: userCore.profile?.profilePicLink || null,
+          location: userCore.profile?.location || null
+        },
+        activeGigs: activeGigsCount,
+        totalHired: totalHiredCount,
+        pendingProposals: totalProposalsCount,
+        completedGigs: statusMap.COMPLETED,
+        cancelledGigs: statusMap.CANCELLED,
+        totalProducts: totalProductsCount,
+        financials: {
+          lifetimeSpentGross: spentGross,
+          lifetimeFeesPaid: feesPaid,
+          lifetimeNetSpent: spentNet
+        }
       }
     });
 
   } catch (error) {
-    console.error("Client Dashboard Stats Error:", error);
-    res.status(500).json({ error: "Failed to fetch client dashboard stats" });
+    console.error("❌ Client Profile Stats Compiler Engine Crashed:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        success: false, 
+        error: "Internal server error occurred while synthesizing structural client metrics." 
+      });
+    }
   }
 };
-

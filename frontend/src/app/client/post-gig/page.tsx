@@ -31,8 +31,11 @@ const PostGig = () => {
   const [skillTree, setSkillTree] = useState<Skill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<{id: string, name: string}[]>([]);
   const [suggestedNewSkills, setSuggestedNewSkills] = useState<Skill[]>([]);
-  const [activeCategory, setActiveCategory] = useState<Skill | null>(null);
-  const [activeSubcategory, setActiveSubcategory] = useState<Skill | null>(null);
+  
+  // 4-Tier Interactive State Management
+  const [activeCategory, setActiveCategory] = useState<Skill | null>(null);       // Tier 1
+  const [activeParentSkill, setActiveParentSkill] = useState<Skill | null>(null); // Tier 2
+  const [activeSubcategory, setActiveSubcategory] = useState<Skill | null>(null); // Tier 3
 
   // Form States
   const [formData, setFormData] = useState({
@@ -46,7 +49,7 @@ const PostGig = () => {
 
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Fetch standard skill tree configuration on mount
+  // Fetch standard 4-tier skill tree configuration on mount
   useEffect(() => {
     api.get('/api/v1/skills/tree')
       .then(res => {
@@ -82,7 +85,7 @@ const PostGig = () => {
 
   /**
    * Processes the uploaded video file to extract project requirements 
-   * and auto-populate step 2 fields.
+   * and auto-populate step 2 fields based on 4-tier structural output.
    */
   const handleAnalyzeVideoBrief = async () => {
     if (!videoFile) return;
@@ -112,9 +115,10 @@ const PostGig = () => {
         if (aiPayload.matchedSkills) {
           const extractedLeafNodes: { id: string; name: string }[] = [];
           
+          // UPDATED: Now walks all the way down to Tier 4 to extract atomic tools/frameworks cleanly
           const traverseAndCollectLeaves = (nodes: Skill[]) => {
             nodes.forEach(node => {
-              if (node.tier === 3 && node.id) {
+              if (node.tier === 4 && node.id) {
                 extractedLeafNodes.push({ id: node.id, name: node.name });
               }
               if (node.subSkills && node.subSkills.length > 0) {
@@ -181,9 +185,6 @@ const PostGig = () => {
     );
   };
 
-  /**
-   * Final submission to create the job post record.
-   */
   const handlePostGig = async () => {
     setIsSubmitting(true);
     const finalPostPayload = new FormData();
@@ -235,20 +236,18 @@ const PostGig = () => {
     <DashboardLayout>
       <div className="flex justify-center w-full max-w-6xl mx-auto gap-12 px-4 relative">
         
-        {/* Full Screen Processing Spinner Overlay */}
         {isAnalyzingVideo && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white">
             <div className="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-md text-center mx-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
               <span className="material-symbols-outlined text-5xl text-primary animate-spin mb-4">sync</span>
               <h4 className="text-xl font-bold tracking-tight">Analyzing Video Brief...</h4>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                Extracting requirements and matching system skills to build your job specifications template.
+                Extracting requirements and matching system skills across 4 relational tree depths to build your job template.
               </p>
             </div>
           </div>
         )}
 
-        {/* Main Content Column */}
         <div className="flex flex-col items-center w-full max-w-2xl">
           <Stepper currentStep={currentStep} />
 
@@ -318,7 +317,6 @@ const PostGig = () => {
                   </header>
                   
                   <div className="space-y-6">
-                    {/* Title */}
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Refined Job Title</label>
                       <input 
@@ -329,7 +327,6 @@ const PostGig = () => {
                       />
                     </div>
 
-                    {/* Description */}
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Scope Deliverables</label>
                       <textarea 
@@ -341,7 +338,6 @@ const PostGig = () => {
                       />
                     </div>
 
-                    {/* Type & Hours */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Payment Type</label>
@@ -356,7 +352,6 @@ const PostGig = () => {
                       </div>
                     </div>
 
-                    {/* Budget Range Slider */}
                     <div className="space-y-2 bg-surface-container-low p-4 rounded-xl border border-outline-variant/20">
                       <div className="flex justify-between items-center mb-1">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Estimated Budget</label>
@@ -377,7 +372,6 @@ const PostGig = () => {
                       </div>
                     </div>
 
-                    {/* Location Targeting */}
                     <div className="space-y-3 bg-surface-container-low p-4 rounded-xl border border-outline-variant/20">
                       <div className="flex justify-between items-end">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Target Location</label>
@@ -394,11 +388,11 @@ const PostGig = () => {
                       {formData.location && <RadiusMap radiusText="Local Talent Coverage Area" locationName={formData.location} />}
                     </div>
 
-                    {/* Skills Selection */}
+                    {/* UPDATED: 4-Tier Interactive Taxonomy UI Core Wrapper */}
                     <div className="space-y-4 bg-surface-container-low p-5 rounded-2xl border border-outline-variant/20">
                       <div>
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant block">Required Skills</label>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Skills extracted from your briefing are active by default. You can manually adjust them below.</p>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant block">Required Skills Matrix</label>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Select a Category $\rightarrow$ Parent Skill $\rightarrow$ Subskill to toggle specific Leaf skills.</p>
                       </div>
                       
                       {selectedSkills.length > 0 && (
@@ -425,24 +419,40 @@ const PostGig = () => {
                       )}
 
                       <div className="space-y-3 pt-2 border-t border-dashed">
-                        {/* Parent Categories */}
+                        {/* Tier 1 Matrix Selector View: Categories */}
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                           {skillTree.map(cat => (
                             <button 
                               key={cat.id} 
                               type="button"
-                              onClick={() => { setActiveCategory(cat); setActiveSubcategory(null); }}
-                              className={`px-3 py-2 text-left text-xs font-semibold rounded-xl border transition-all truncate ${activeCategory?.id === cat.id ? 'bg-secondary text-white border-secondary' : 'bg-white text-slate-600 border-outline-variant/20 hover:bg-slate-50'}`}
+                              onClick={() => { setActiveCategory(cat); setActiveParentSkill(null); setActiveSubcategory(null); }}
+                              className={`px-3 py-2 text-left text-xs font-semibold rounded-xl border transition-all truncate ${activeCategory?.id === cat.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-outline-variant/20 hover:bg-slate-50'}`}
                             >
                               {cat.name}
                             </button>
                           ))}
                         </div>
 
-                        {/* Sub-categories */}
+                        {/* Tier 2 Matrix Selector View: Parent Skills */}
                         {activeCategory?.subSkills && activeCategory.subSkills.length > 0 && (
-                          <div className="pl-3 border-l-2 border-secondary/30 grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-200">
-                            {activeCategory.subSkills.map(sub => (
+                          <div className="pl-2 border-l-2 border-slate-900/30 grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-200">
+                            {activeCategory.subSkills.map(parentSkill => (
+                              <button 
+                                key={parentSkill.id}
+                                type="button"
+                                onClick={() => { setActiveParentSkill(parentSkill); setActiveSubcategory(null); }}
+                                className={`px-2.5 py-1.5 text-left text-xs font-semibold rounded-xl border transition-all truncate ${activeParentSkill?.id === parentSkill.id ? 'bg-secondary text-white border-secondary' : 'bg-slate-50 text-slate-600 border-outline-variant/10 hover:bg-slate-100'}`}
+                              >
+                                {parentSkill.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Tier 3 Matrix Selector View: Sub-Categories */}
+                        {activeParentSkill?.subSkills && activeParentSkill.subSkills.length > 0 && (
+                          <div className="pl-4 border-l-2 border-secondary/30 grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-200">
+                            {activeParentSkill.subSkills.map(sub => (
                               <button 
                                 key={sub.id}
                                 type="button"
@@ -455,7 +465,7 @@ const PostGig = () => {
                           </div>
                         )}
 
-                        {/* Leaf nodes */}
+                        {/* Tier 4 Matrix Selector View: Leaf Nodes (Atomic Choices) */}
                         {activeSubcategory?.subSkills && activeSubcategory.subSkills.length > 0 && (
                           <div className="pl-6 border-l-2 border-primary/30 flex flex-wrap gap-1.5 animate-in slide-in-from-top-2 duration-200">
                             {activeSubcategory.subSkills.map(leaf => {
@@ -482,7 +492,6 @@ const PostGig = () => {
                       </div>
                     </div>
 
-                    {/* Image Attachments */}
                     <div className="space-y-2 bg-surface-container-low p-4 rounded-xl border border-outline-variant/20">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant block">Supplementary Mockups / Images (Optional)</label>
                       <div className="flex items-center gap-4">
@@ -515,7 +524,7 @@ const PostGig = () => {
                 </>
               )}
 
-              {/* STEP 3: Sandbox Secure Checkout Cover */}
+              {/* STEP 3: Escrow Checkout Cover */}
               {currentStep === 3 && (
                 <>
                   <header className="mb-6 text-center">
@@ -565,7 +574,6 @@ const PostGig = () => {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="hidden lg:block w-72 shrink-0 pt-24 space-y-4">
           <ProTipCard text="Analyzing the uploaded project context automatically structures the workspace fields to match platform classifications." />
           <GigSummaryCard 
@@ -579,13 +587,13 @@ const PostGig = () => {
   );
 };
 
-// Internal sub-components
 const ProTipCard = ({ text }: { text: string }) => (
   <div className="p-5 bg-secondary-container/20 rounded-2xl border border-secondary/10">
     <h4 className="font-headline font-bold text-secondary flex items-center gap-2 mb-2"><span className="material-symbols-outlined">lightbulb</span> Pro Tip</h4>
     <p className="text-xs leading-relaxed text-on-secondary-container">{text}</p>
   </div>
 );
+
 const GigSummaryCard = ({ title, skills, tier }: { title: string; skills: string; tier: string }) => (
   <div className="p-5 bg-surface-container-high rounded-2xl border border-primary/5 shadow-sm">
     <h4 className="font-headline font-bold text-primary mb-3">Gig Summary</h4>
@@ -597,6 +605,7 @@ const GigSummaryCard = ({ title, skills, tier }: { title: string; skills: string
     </div>
   </div>
 );
+
 const SummaryRow = ({ label, value, isSecondary }: { label: any; value: any; isSecondary?: any }) => (
   <div className="flex justify-between items-center">
     <span className="text-[10px] uppercase font-bold text-slate-400">{label}</span>

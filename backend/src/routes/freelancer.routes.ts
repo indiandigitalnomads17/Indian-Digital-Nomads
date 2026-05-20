@@ -1,11 +1,7 @@
 import { Router } from "express";
 import { 
   addProject, 
-  onboardFreelancer, 
-  getPrivateFreelancerProfile,
-  getFreelancerDashboardStats,
-  getRecommendedJobs
-} from "../controllers/freelancer.controller";
+  onboardFreelancer, getFreelancerProfileWithAllStats,getRecommendedJobs} from "../controllers/freelancer.controller";
 import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
@@ -35,9 +31,9 @@ router.post(
   addProject
 );
 
-router.get("/get-profile-data", protect, authorize("FREELANCER"), getPrivateFreelancerProfile);
+router.get("/get-profile-data", protect, authorize("FREELANCER"), getFreelancerProfileWithAllStats);
 
-router.get("/dashboard-stats", protect, authorize("FREELANCER"), getFreelancerDashboardStats);
+router.get("/dashboard-stats", protect, authorize("FREELANCER"), getFreelancerProfileWithAllStats);
 router.get("/recommendations", protect, authorize("FREELANCER"), getRecommendedJobs);
 
 router.post("/send-proposal", protect, authorize("FREELANCER"), submitProposal);

@@ -17,9 +17,11 @@ const AddProject = () => {
   const [allSkills, setAllSkills] = useState<SkillNode[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const [selectedParentId, setSelectedParentId] = useState<string>('');
-  const [selectedSubId, setSelectedSubId] = useState<string>('');
-  const [selectedLeafId, setSelectedLeafId] = useState<string>('');
+  // Strict 4-Tier Filtering Selectors State Elements
+  const [selectedParentId, setSelectedParentId] = useState<string>(''); // Tier 1 Category
+  const [selectedSubId, setSelectedSubId] = useState<string>('');       // Tier 2 Parent Skill
+  const [selectedLeafId, setSelectedLeafId] = useState<string>('');     // Tier 3 Subskill
+  const [selectedAtomicLeafId, setSelectedAtomicLeafId] = useState<string>(''); // Tier 4 Leaf Node
 
   const [formData, setFormData] = useState({
     title: '',
@@ -44,21 +46,32 @@ const AddProject = () => {
         ]);
 
         if (profileRes.data.success && skillsRes.data.success) {
-          const userSkillsList = profileRes.data.data.profile?.skills || [];
+          // Sync with the updated high-density data object contract layout
+          const profileWrapper = profileRes.data.data;
+          const userSkillsList = profileWrapper.profileMetadata?.skillsTree || [];
           const userSkillIds = new Set(userSkillsList.map((s: any) => s.id));
           const fullTree = skillsRes.data.data as SkillNode[];
 
-          const filteredTree = fullTree.map(parent => {
-            const filteredSubs = (parent.subSkills || []).map(sub => {
-              const filteredLeaves = (sub.subSkills || []).filter(leaf => userSkillIds.has(leaf.id));
-              if (userSkillIds.has(sub.id) || filteredLeaves.length > 0) {
-                return { ...sub, subSkills: filteredLeaves };
+          // UPDATED: Recursively maps structural branches across all 4 production depths
+          const filteredTree = fullTree.map(category => {
+            const filteredParents = (category.subSkills || []).map(parentSkill => {
+              const filteredSubs = (parentSkill.subSkills || []).map(subSkill => {
+                const filteredLeaves = (subSkill.subSkills || []).filter(leafNode => userSkillIds.has(leafNode.id));
+                
+                if (userSkillIds.has(subSkill.id) || filteredLeaves.length > 0) {
+                  return { ...subSkill, subSkills: filteredLeaves };
+                }
+                return null;
+              }).filter(Boolean) as SkillNode[];
+
+              if (userSkillIds.has(parentSkill.id) || filteredSubs.length > 0) {
+                return { ...parentSkill, subSkills: filteredSubs };
               }
               return null;
             }).filter(Boolean) as SkillNode[];
 
-            if (userSkillIds.has(parent.id) || filteredSubs.length > 0) {
-              return { ...parent, subSkills: filteredSubs };
+            if (userSkillIds.has(category.id) || filteredParents.length > 0) {
+              return { ...category, subSkills: filteredParents };
             }
             return null;
           }).filter(Boolean) as SkillNode[];
@@ -73,14 +86,19 @@ const AddProject = () => {
   }, []);
 
   const getSkillPathString = (id: string): string => {
-    for (const parent of allSkills) {
-      if (parent.id === id) return parent.name;
-      if (parent.subSkills) {
-        for (const sub of parent.subSkills) {
-          if (sub.id === id) return `${parent.name} → ${sub.name}`;
-          if (sub.subSkills) {
-            for (const leaf of sub.subSkills) {
-              if (leaf.id === id) return `${parent.name} → ${sub.name} → ${leaf.name}`;
+    for (const category of allSkills) {
+      if (category.id === id) return category.name;
+      if (category.subSkills) {
+        for (const parentSkill of category.subSkills) {
+          if (parentSkill.id === id) return `${category.name} → ${parentSkill.name}`;
+          if (parentSkill.subSkills) {
+            for (const subSkill of parentSkill.subSkills) {
+              if (subSkill.id === id) return `${category.name} → ${parentSkill.name} → ${subSkill.name}`;
+              if (subSkill.subSkills) {
+                for (const leafNode of subSkill.subSkills) {
+                  if (leafNode.id === id) return `${category.name} → ${parentSkill.name} → ${subSkill.name} → ${leafNode.name}`;
+                }
+              }
             }
           }
         }
@@ -90,7 +108,7 @@ const AddProject = () => {
   };
 
   const handleAddSkillFromChain = () => {
-    const targetId = selectedLeafId || selectedSubId || selectedParentId;
+    const targetId = selectedAtomicLeafId || selectedLeafId || selectedSubId || selectedParentId;
     if (!targetId) return;
 
     if (!formData.skills.includes(targetId)) {
@@ -99,6 +117,7 @@ const AddProject = () => {
         skills: [...formData.skills, targetId]
       });
     }
+    setSelectedAtomicLeafId('');
     setSelectedLeafId('');
     setSelectedSubId('');
     setSelectedParentId('');
@@ -159,8 +178,10 @@ const AddProject = () => {
     }
   };
 
-  const subSkillOptions = allSkills.find(p => p.id === selectedParentId)?.subSkills || [];
-  const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
+  // 4-Tier UI Select Chain Layer Map Resolvers
+  const parentSkillOptions = allSkills.find(c => c.id === selectedParentId)?.subSkills || [];
+  const subSkillOptions = parentSkillOptions.find(p => p.id === selectedSubId)?.subSkills || [];
+  const atomicLeafSkillOptions = subSkillOptions.find(s => s.id === selectedLeafId)?.subSkills || [];
 
   return (
     <DashboardLayout>
@@ -253,31 +274,45 @@ const AddProject = () => {
                   </div>
                 </div>
 
+                {/* Updated 4-Tier Functional Selector Form Chain */}
                 <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
                   <div>
                     <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Skills Mapped to This Project</label>
-                    <p className="text-[11px] text-slate-400 font-semibold mb-3">Select skills from your profile to connect to this project.</p>
+                    <p className="text-[11px] text-slate-400 font-semibold mb-3">Tag exactly which pipeline nodes your portfolio milestone demonstrates.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Parent Category</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Main Category</span>
                       <select 
                         value={selectedParentId} 
-                        onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); }}
+                        onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
                         className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
                       >
                         <option value="">-- Choose Category --</option>
-                        {allSkills.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {allSkills.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
 
                     <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Sub Category</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Parent Skill</span>
                       <select 
                         value={selectedSubId} 
                         disabled={!selectedParentId}
-                        onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); }}
+                        onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
+                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                      >
+                        <option value="">-- Choose Parent Skill --</option>
+                        {parentSkillOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Sub-Skill</span>
+                      <select 
+                        value={selectedLeafId} 
+                        disabled={!selectedSubId}
+                        onChange={(e) => { setSelectedLeafId(e.target.value); setSelectedAtomicLeafId(''); }}
                         className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
                       >
                         <option value="">-- Choose Sub-Skill --</option>
@@ -286,21 +321,21 @@ const AddProject = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Specific Leaf Skill (Optional)</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">4. Leaf Expertise (Optional)</span>
                       <div className="flex gap-2">
                         <select 
-                          value={selectedLeafId} 
-                          disabled={!selectedSubId}
-                          onChange={(e) => setSelectedLeafId(e.target.value)}
+                          value={selectedAtomicLeafId} 
+                          disabled={!selectedLeafId}
+                          onChange={(e) => setSelectedAtomicLeafId(e.target.value)}
                           className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
                         >
-                          <option value="">-- Choose Expertise --</option>
-                          {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                          <option value="">-- Choose Framework --</option>
+                          {atomicLeafSkillOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                         <Button
                           type="button"
                           onClick={handleAddSkillFromChain}
-                          isDisabled={!(selectedParentId || selectedSubId || selectedLeafId)}
+                          isDisabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}
                           color="primary"
                           className="px-4 rounded-xl uppercase transition-all shadow-md flex items-center justify-center border-blue-500"
                         >

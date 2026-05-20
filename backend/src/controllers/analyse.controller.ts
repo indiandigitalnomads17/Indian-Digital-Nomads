@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
 import { uploadOnCloudinary } from "../config/cloudinary"; 
-import { parseAudioWithGroq } from "../services/groq.service"; // 🔄 Swapped from gemini service to free Groq service
+import { parseAudioWithGroq } from "../services/groq.service"; 
 import fs from "fs";
 import path from "path";
 import axios from "axios";
 import prisma from "../config/prisma"; 
-
 
 const downloadFile = async (url: string, downloadPath: string): Promise<void> => {
   const writer = fs.createWriteStream(downloadPath);
@@ -17,7 +16,6 @@ const downloadFile = async (url: string, downloadPath: string): Promise<void> =>
     writer.on("error", reject);
   });
 };
-
 
 export const analyzeVideo = async (req: Request, res: Response) => {
   const localVideoPath = req.file?.path;
@@ -33,9 +31,8 @@ export const analyzeVideo = async (req: Request, res: Response) => {
   let temporaryAudioPath = "";
 
   try {
-
     const skillTreeHierarchy = await prisma.skill.findMany({
-      where: { parentId: null }, // Grabs root nodes
+      where: { parentId: null, tier: 1 }, 
       select: {
         id: true,
         name: true,
@@ -46,13 +43,19 @@ export const analyzeVideo = async (req: Request, res: Response) => {
             name: true,
             tier: true,
             subSkills: {
-              select: { id: true, name: true, tier: true } 
+              select: { 
+                id: true, 
+                name: true, 
+                tier: true,
+                subSkills: {
+                  select: { id: true, name: true, tier: true } 
+                }
+              } 
             }
           }
         }
       }
     });
-
 
     const cloudinaryResponse = await uploadOnCloudinary(localVideoPath);
     if (!cloudinaryResponse || !cloudinaryResponse.secure_url) {
@@ -63,22 +66,17 @@ export const analyzeVideo = async (req: Request, res: Response) => {
     }
     
     const videoUrl = cloudinaryResponse.secure_url;
-    
-
     const audioUrl = videoUrl.replace(/\.[^/.]+(?=\?|$)/, ".mp3");
-
 
     const timestamp = Date.now();
     temporaryAudioPath = path.join("./public/temp", `audio-extract-${timestamp}.mp3`);
     await downloadFile(audioUrl, temporaryAudioPath);
 
-    // 5. Invoke free Groq core extraction pipeline processing layer
     const structuredOutput = await parseAudioWithGroq({
       filePath: temporaryAudioPath,
       rawTitle,
       existingSkills: skillTreeHierarchy 
     });
-
 
     return res.status(200).json({
       success: true,
