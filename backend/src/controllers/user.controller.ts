@@ -91,6 +91,7 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
       });
     });
   } catch (error) {
+    console.error("[Login Error] Exception caught in signIn:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -115,6 +116,7 @@ export const getMe = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
+    console.error("[getMe Error] Exception caught in getMe:", error);
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 };

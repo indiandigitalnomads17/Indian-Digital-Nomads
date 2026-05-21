@@ -2,7 +2,7 @@
 import React from 'react';
 
 const GigCard = ({ data, isUrgent = false, onApply }) => {
-  const { id, title, match, time, dist, price, description } = data;
+  const { id, title, match, time, dist, price, description, client } = data;
 
   return (
     <div className={`bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all flex flex-col justify-between group border border-slate-100 ${isUrgent ? 'md:col-span-2 relative border-l-4 border-l-blue-600' : ''}`}>
@@ -18,6 +18,18 @@ const GigCard = ({ data, isUrgent = false, onApply }) => {
           <h3 className={`${isUrgent ? 'text-2xl font-black' : 'text-lg font-black'} text-slate-900 mb-2 group-hover:text-blue-600 transition-colors tracking-tight`}>
             {title}
           </h3>
+
+          {client && (
+            <div className="mb-3">
+              <a 
+                href={`/client/profile/${client.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-all"
+              >
+                <span className="material-symbols-outlined text-sm">domain</span>
+                {client.fullName}
+              </a>
+            </div>
+          )}
 
           <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-4 leading-relaxed">{description}</p>
 

@@ -49,6 +49,19 @@ const PostGig = () => {
 
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Video recording/camera states
+  const [recordingMode, setRecordingMode] = useState<'upload' | 'camera'>('upload');
+  const [cameraState, setCameraState] = useState<'inactive' | 'preview' | 'recording' | 'review'>('inactive');
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+  const [recordingTimer, setRecordingTimer] = useState(0);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<any>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
   // Fetch standard 4-tier skill tree configuration on mount
   useEffect(() => {
     api.get('/api/v1/skills/tree')
@@ -60,6 +73,21 @@ const PostGig = () => {
       })
       .catch(err => console.error("Failed to load skills tree matrix:", err));
   }, []);
+
+  // Cleanup effect for camera and recorded URLs
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (recordedBlobUrl) {
+        URL.revokeObjectURL(recordedBlobUrl);
+      }
+    };
+  }, [recordedBlobUrl]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -81,6 +109,156 @@ const PostGig = () => {
 
   const removeImageFile = (index: number) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Video recording utilities
+  const getSupportedMimeType = () => {
+    if (typeof window === 'undefined') return '';
+    const types = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4',
+      'video/quicktime'
+    ];
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return '';
+  };
+
+  const startCamera = async () => {
+    setCameraError(null);
+    setCameraState('preview');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 1280, height: 720, facingMode: 'user' },
+        audio: true
+      });
+      mediaStreamRef.current = stream;
+      setMediaStream(stream);
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+        videoPreviewRef.current.play().catch(e => console.log("Play interrupted", e));
+      }
+    } catch (err: any) {
+      console.error("Camera access failed:", err);
+      setCameraError(
+        err.name === 'NotAllowedError' 
+          ? "Permission to access camera/microphone was denied. Please review browser permission settings." 
+          : "Could not access camera/microphone. Please verify that the device is connected and not in use."
+      );
+      setCameraState('inactive');
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+      setMediaStream(null);
+    }
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null;
+    }
+  };
+
+  const startRecording = () => {
+    const stream = mediaStreamRef.current;
+    if (!stream) return;
+    
+    setRecordingTimer(0);
+    const mimeType = getSupportedMimeType();
+    
+    try {
+      const options = mimeType ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(stream, options);
+      
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        const type = mimeType || 'video/webm';
+        const blob = new Blob(chunks, { type });
+        const url = URL.createObjectURL(blob);
+        setRecordedBlobUrl(url);
+        setCameraState('review');
+        stopCamera();
+      };
+      
+      setMediaRecorder(recorder);
+      recorder.start(1000);
+      setCameraState('recording');
+      
+      timerRef.current = setInterval(() => {
+        setRecordingTimer(prev => {
+          if (prev >= 120) { // Limit to 2 minutes
+            clearInterval(timerRef.current);
+            if (recorder.state !== 'inactive') {
+              recorder.stop();
+            }
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+      
+    } catch (err) {
+      console.error("Failed to start MediaRecorder:", err);
+      alert("Failed to initialize video recording. Please upload a file instead.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  };
+
+  const handleRerecord = () => {
+    if (recordedBlobUrl) {
+      URL.revokeObjectURL(recordedBlobUrl);
+      setRecordedBlobUrl(null);
+    }
+    setRecordingTimer(0);
+    startCamera();
+  };
+
+  const handleUseRecordedVideo = async () => {
+    if (!recordedBlobUrl) return;
+    
+    try {
+      const res = await fetch(recordedBlobUrl);
+      const blob = await res.blob();
+      
+      const mimeType = getSupportedMimeType();
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+      
+      const file = new File([blob], `recorded-brief.${ext}`, { type: blob.type || 'video/webm' });
+      setVideoFile(file);
+      
+      setRecordingMode('upload');
+      setCameraState('inactive');
+      
+    } catch (err) {
+      console.error("Failed to prepare video file:", err);
+      alert("Failed to process recorded video.");
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   /**
@@ -115,7 +293,6 @@ const PostGig = () => {
         if (aiPayload.matchedSkills) {
           const extractedLeafNodes: { id: string; name: string }[] = [];
           
-          // UPDATED: Now walks all the way down to Tier 4 to extract atomic tools/frameworks cleanly
           const traverseAndCollectLeaves = (nodes: Skill[]) => {
             nodes.forEach(node => {
               if (node.tier === 4 && node.id) {
@@ -259,7 +436,7 @@ const PostGig = () => {
                 <>
                   <header className="mb-8">
                     <h3 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Gig Briefing</h3>
-                    <p className="text-slate-500">Provide a baseline working title and upload your requirements video clip to auto-fill configurations.</p>
+                    <p className="text-slate-500">Provide a baseline working title and record or upload your requirements video clip to auto-fill configurations.</p>
                   </header>
                   <div className="space-y-6">
                     <div className="space-y-2">
@@ -275,23 +452,189 @@ const PostGig = () => {
 
                     <div className="space-y-2">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Video Briefing Clip</label>
-                      <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-outline-variant/60 rounded-xl p-8 text-center bg-surface-container-low hover:bg-surface-container/40 transition-all cursor-pointer group"
-                      >
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          accept="video/*" 
-                          onChange={handleVideoChange} 
-                          className="hidden"
-                        />
-                        <span className="material-symbols-outlined text-4xl text-slate-400 group-hover:text-primary transition-colors mb-2">movie_creation</span>
-                        <p className="text-sm font-semibold text-slate-600">
-                          {videoFile ? videoFile.name : "Select or drag requirements presentation clip"}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Accepts standard video containers up to 50MB</p>
-                      </div>
+                      
+                      {videoFile ? (
+                        <div className="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-250">
+                          <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-emerald-600 bg-emerald-100/50 p-2 rounded-lg border border-emerald-200">movie</span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-slate-800 truncate max-w-[200px] md:max-w-[320px]">
+                                {videoFile.name}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                {(videoFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for analysis
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setVideoFile(null)}
+                            className="text-slate-400 hover:text-rose-500 transition-colors p-1"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Selector Tab */}
+                          <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200/50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRecordingMode('upload');
+                                stopCamera();
+                              }}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                                recordingMode === 'upload'
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">file_upload</span>
+                              Upload File
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRecordingMode('camera');
+                                startCamera();
+                              }}
+                              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                                recordingMode === 'camera'
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">videocam</span>
+                              Record with Camera
+                            </button>
+                          </div>
+
+                          {/* File upload input */}
+                          {recordingMode === 'upload' && (
+                            <div 
+                              onClick={() => fileInputRef.current?.click()}
+                              className="border-2 border-dashed border-outline-variant/60 rounded-xl p-8 text-center bg-surface-container-low hover:bg-surface-container/40 transition-all cursor-pointer group"
+                            >
+                              <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                accept="video/*" 
+                                onChange={handleVideoChange} 
+                                className="hidden"
+                              />
+                              <span className="material-symbols-outlined text-4xl text-slate-400 group-hover:text-primary transition-colors mb-2">movie_creation</span>
+                              <p className="text-sm font-semibold text-slate-600">Select or drag requirements presentation clip</p>
+                              <p className="text-xs text-slate-400 mt-1">Accepts standard video containers up to 50MB</p>
+                            </div>
+                          )}
+
+                          {/* Camera Recording View */}
+                          {recordingMode === 'camera' && (
+                            <div className="border border-outline-variant/60 rounded-xl overflow-hidden bg-slate-950 relative aspect-video flex flex-col items-center justify-center shadow-inner">
+                              
+                              {/* Live camera video or playback */}
+                              {(cameraState === 'preview' || cameraState === 'recording') && (
+                                <video
+                                  ref={videoPreviewRef}
+                                  muted
+                                  playsInline
+                                  autoPlay
+                                  className="w-full h-full object-cover scale-x-[-1]"
+                                />
+                              )}
+
+                              {cameraState === 'review' && recordedBlobUrl && (
+                                <video
+                                  src={recordedBlobUrl}
+                                  controls
+                                  playsInline
+                                  className="w-full h-full object-cover"
+                                />
+                              )}
+
+                              {/* Camera Error Display */}
+                              {cameraState === 'inactive' && cameraError && (
+                                <div className="p-6 text-center text-white">
+                                  <span className="material-symbols-outlined text-4xl text-rose-500 mb-2">videocam_off</span>
+                                  <p className="text-xs font-bold text-rose-400 max-w-xs mx-auto leading-relaxed">{cameraError}</p>
+                                  <Button
+                                    color="secondary"
+                                    size="sm"
+                                    onClick={startCamera}
+                                    className="mt-4 text-white bg-slate-800 hover:bg-slate-700"
+                                  >
+                                    Try Enable Camera
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Camera HUD Indicator */}
+                              {cameraState === 'recording' && (
+                                <div className="absolute top-4 left-4 bg-rose-600/90 text-white text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-md animate-pulse">
+                                  <span className="size-2 bg-white rounded-full"></span>
+                                  REC {formatTime(recordingTimer)} / 02:00
+                                </div>
+                              )}
+
+                              {cameraState === 'preview' && (
+                                <div className="absolute top-4 left-4 bg-slate-950/90 text-white text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-md">
+                                  <span className="size-2 bg-emerald-500 rounded-full animate-ping"></span>
+                                  Camera Ready
+                                </div>
+                              )}
+
+                              {/* Controllers */}
+                              {cameraState !== 'inactive' && (
+                                <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/85 via-black/45 to-transparent flex items-center justify-center gap-3">
+                                  {cameraState === 'preview' && (
+                                    <button
+                                      type="button"
+                                      onClick={startRecording}
+                                      className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all scale-100 hover:scale-[1.02]"
+                                    >
+                                      <span className="material-symbols-outlined text-base">fiber_manual_record</span>
+                                      Start Recording
+                                    </button>
+                                  )}
+
+                                  {cameraState === 'recording' && (
+                                    <button
+                                      type="button"
+                                      onClick={stopRecording}
+                                      className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-100 font-extrabold text-xs rounded-xl shadow-lg transition-all scale-100 hover:scale-[1.02]"
+                                    >
+                                      <span className="material-symbols-outlined text-base">stop</span>
+                                      Stop & Save
+                                    </button>
+                                  )}
+
+                                  {cameraState === 'review' && (
+                                    <div className="flex gap-2 w-full max-w-sm justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={handleRerecord}
+                                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all"
+                                      >
+                                        <span className="material-symbols-outlined text-base">refresh</span>
+                                        Re-record
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={handleUseRecordedVideo}
+                                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-lg transition-all"
+                                      >
+                                        <span className="material-symbols-outlined text-base">check</span>
+                                        Use Video
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-6 flex justify-end">
@@ -368,7 +711,7 @@ const PostGig = () => {
                       />
                       <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                         <span>Min: ₹500</span>
-                        <span>Max: ₹1,00,000+</span>
+                        <span>Max: ₹1,0,000+</span>
                       </div>
                     </div>
 
@@ -388,7 +731,7 @@ const PostGig = () => {
                       {formData.location && <RadiusMap radiusText="Local Talent Coverage Area" locationName={formData.location} />}
                     </div>
 
-                    {/* UPDATED: 4-Tier Interactive Taxonomy UI Core Wrapper */}
+                    {/* Skill taxonomy panel */}
                     <div className="space-y-4 bg-surface-container-low p-5 rounded-2xl border border-outline-variant/20">
                       <div>
                         <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant block">Required Skills Matrix</label>
@@ -419,7 +762,7 @@ const PostGig = () => {
                       )}
 
                       <div className="space-y-3 pt-2 border-t border-dashed">
-                        {/* Tier 1 Matrix Selector View: Categories */}
+                        {/* Tier 1 Categories */}
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                           {skillTree.map(cat => (
                             <button 
@@ -433,7 +776,7 @@ const PostGig = () => {
                           ))}
                         </div>
 
-                        {/* Tier 2 Matrix Selector View: Parent Skills */}
+                        {/* Tier 2 Parent Skills */}
                         {activeCategory?.subSkills && activeCategory.subSkills.length > 0 && (
                           <div className="pl-2 border-l-2 border-slate-900/30 grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-200">
                             {activeCategory.subSkills.map(parentSkill => (
@@ -449,7 +792,7 @@ const PostGig = () => {
                           </div>
                         )}
 
-                        {/* Tier 3 Matrix Selector View: Sub-Categories */}
+                        {/* Tier 3 Sub-Categories */}
                         {activeParentSkill?.subSkills && activeParentSkill.subSkills.length > 0 && (
                           <div className="pl-4 border-l-2 border-secondary/30 grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-200">
                             {activeParentSkill.subSkills.map(sub => (
@@ -465,7 +808,7 @@ const PostGig = () => {
                           </div>
                         )}
 
-                        {/* Tier 4 Matrix Selector View: Leaf Nodes (Atomic Choices) */}
+                        {/* Tier 4 Leaf Nodes */}
                         {activeSubcategory?.subSkills && activeSubcategory.subSkills.length > 0 && (
                           <div className="pl-6 border-l-2 border-primary/30 flex flex-wrap gap-1.5 animate-in slide-in-from-top-2 duration-200">
                             {activeSubcategory.subSkills.map(leaf => {
@@ -515,7 +858,7 @@ const PostGig = () => {
                     </div>
 
                     <div className="pt-6 flex justify-between gap-4">
-                      <Button color="tertiary" size="xl" onClick={prevStep} className="px-8 bg-slate-100 text-slate-700 font-bold rounded-xl">Back</Button>
+                      <Button color="tertiary" size="xl" onClick={prevStep} className="px-8 bg-slate-100 text-slate-700 font-bold rounded-xl font-headline uppercase tracking-wider">Back</Button>
                       <Button color="primary" size="xl" onClick={handlePostGig} isLoading={isSubmitting} isDisabled={!isStep2Valid} className="flex-1 bg-gradient-to-br from-primary to-primary-container text-white font-extrabold rounded-xl shadow-lg">
                         Publish Gig <span className="material-symbols-outlined text-lg ml-1">rocket_launch</span>
                       </Button>

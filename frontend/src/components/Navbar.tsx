@@ -44,11 +44,11 @@ export const Navbar = () => {
                         {authenticated ? (
                             <>
                                 <Button 
-                                    href={user?.role === "FREELANCER" ? "/freelancer/profile" : "/client"}
+                                    href={user?.role === "FREELANCER" ? "/freelancer/profile" : "/client/profile"}
                                     color="secondary"
                                     size="sm"
                                 >
-                                    {user?.role === "FREELANCER" ? "My Profile" : "Dashboard"}
+                                    My Profile
                                 </Button>
                                 <Button 
                                     onClick={logout}

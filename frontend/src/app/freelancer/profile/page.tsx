@@ -59,7 +59,7 @@ interface ActiveJob {
   budget: number | string | null; 
   estimatedHours?: number | null;
   createdAt: string;
-  client: { fullName: string; email: string };
+  client: { id: string; fullName: string; email: string };
 }
 
 interface Proposal {
@@ -787,7 +787,7 @@ const FreelancerProfile = () => {
                               <span className="text-[10px] text-slate-400 font-bold">{new Date(job.createdAt).toLocaleDateString()}</span>
                             </div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight">{job.title}</h3>
-                            <p className="text-xs text-slate-400 font-medium">Client: <span className="text-slate-600 font-bold">{job.client.fullName}</span> ({job.client.email})</p>
+                            <p className="text-xs text-slate-400 font-medium">Client: <a href={`/client/profile/${job.client.id}`} className="text-blue-600 hover:text-blue-800 font-bold hover:underline transition-all">{job.client.fullName}</a> ({job.client.email})</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xl font-black text-slate-900">₹{Number(job.budget).toLocaleString()}</p>

@@ -308,6 +308,7 @@ export const getClientProfileWithAllStats = async (req: Request, res: Response) 
           id: true,
           fullName: true,
           email: true,
+          phoneNumber: true,
           role: true,
           isVerified: true,
           isEmailVerified: true,
@@ -317,7 +318,12 @@ export const getClientProfileWithAllStats = async (req: Request, res: Response) 
           profile: {
             select: {
               profilePicLink: true,
-              location: true
+              location: true,
+              bio: true,
+              videoLink: true,
+              bannerLink: true,
+              latitude: true,
+              longitude: true
             }
           }
         }
@@ -383,12 +389,18 @@ export const getClientProfileWithAllStats = async (req: Request, res: Response) 
         account: {
           fullName: userCore.fullName,
           email: userCore.email,
+          phoneNumber: userCore.phoneNumber || null,
           isVerified: userCore.isVerified,
           isEmailVerified: userCore.isEmailVerified,
           isPhoneNumberVerified: userCore.isPhoneNumberVerified,
           nomadScore: Number(userCore.nomadScore || 0),
           profilePicLink: userCore.profile?.profilePicLink || null,
-          location: userCore.profile?.location || null
+          bannerLink: userCore.profile?.bannerLink || null,
+          videoLink: userCore.profile?.videoLink || null,
+          location: userCore.profile?.location || null,
+          bio: userCore.profile?.bio || null,
+          latitude: userCore.profile?.latitude || null,
+          longitude: userCore.profile?.longitude || null,
         },
         activeGigs: activeGigsCount,
         totalHired: totalHiredCount,
@@ -412,5 +424,38 @@ export const getClientProfileWithAllStats = async (req: Request, res: Response) 
         error: "Internal server error occurred while synthesizing structural client metrics." 
       });
     }
+  }
+};
+
+export const getClientGigs = async (req: Request, res: Response) => {
+  try {
+    const clientId = (req.user as any)?.id;
+    if (!clientId) {
+      return res.status(401).json({ success: false, error: "Unauthorized access token context." });
+    }
+
+    const gigs = await prisma.job.findMany({
+      where: { clientId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { proposals: true } },
+        freelancer: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            profile: { select: { profilePicLink: true } }
+          }
+        },
+        skillsRequired: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    return res.status(200).json({ success: true, data: gigs });
+  } catch (error) {
+    console.error("Get Client Gigs Error:", error);
+    return res.status(500).json({ success: false, error: "Failed to fetch client jobs" });
   }
 };

@@ -74,14 +74,15 @@ const FreelancerDashboard = () => {
     }
   }, [authLoading, user]);
 
-  const transformedJobs = jobs.map((job: Job) => ({
+  const transformedJobs = jobs.map((job: any) => ({
     id: job.id,
     title: job.title,
     match: job.matchPercent ? `${job.matchPercent}%` : "Match",
     time: formatTimeAgo(job.createdAt),
     dist: job.location || "Nearby",
     price: job.budget ? `₹${job.budget}` : "Flexible",
-    description: job.description
+    description: job.description,
+    client: job.client
   }));
 
   const handleApply = (job: any) => {

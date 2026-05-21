@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { StatCardPremium } from '../../components/common/StatCardPremium';
 import { FreelancerCardPremium } from '../../components/common/FreelancerCardPremium';
@@ -26,6 +27,8 @@ interface AccountStats {
   nomadScore: number;
   profilePicLink: string | null;
   location: string | null;
+  bio?: string | null;
+  phoneNumber?: string | null;
 }
 
 interface Financials {
@@ -36,6 +39,7 @@ interface Financials {
 
 const BusinessDashboard = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [account, setAccount] = useState<AccountStats | null>(null);
   const [stats, setStats] = useState({
     activeGigs: 0,
@@ -52,6 +56,7 @@ const BusinessDashboard = () => {
   });
   const [recommendations, setRecommendations] = useState<Freelancer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -75,6 +80,11 @@ const BusinessDashboard = () => {
             totalProducts
           });
           setFinancials(financials);
+
+          // Check if onboarding is needed (empty bio, location, or phoneNumber)
+          if (!account.bio || account.bio.length < 10 || !account.location || !account.phoneNumber) {
+            setNeedsOnboarding(true);
+          }
         }
         if (recsRes.data.success) {
           setRecommendations(recsRes.data.data);
@@ -99,6 +109,31 @@ const BusinessDashboard = () => {
       img: freelancer.profile?.profilePicLink || "https://res.cloudinary.com/dmv76qdpx/image/upload/v1713727931/default-avatar_vqc9tw.png"
     };
   };
+
+  if (loading) return <div className="p-20 text-center font-black animate-pulse">Initializing Business Dashboard...</div>;
+
+  if (needsOnboarding) {
+    return (
+      <DashboardLayout>
+         <div className="max-w-xl mx-auto mt-20 text-center space-y-8 bg-white p-12 rounded-[40px] shadow-2xl shadow-blue-500/10 border border-slate-50">
+            <div className="w-24 h-24 bg-blue-600 rounded-[30px] flex items-center justify-center text-white mx-auto shadow-xl shadow-blue-500/40">
+               <span className="material-symbols-outlined text-5xl">domain</span>
+            </div>
+            <div>
+               <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Welcome, {user?.fullName}!</h1>
+               <p className="text-slate-500 font-semibold leading-relaxed">Before you can start hiring local expert nomads, we need to set up your business profile.</p>
+            </div>
+            <button 
+              onClick={() => router.push('/client/profile')}
+              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 active:scale-95 transition-all shadow-xl shadow-slate-200"
+            >
+               Set Up Business Profile
+            </button>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-50">Takes less than 2 minutes</p>
+         </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

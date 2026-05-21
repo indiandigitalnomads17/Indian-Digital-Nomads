@@ -215,7 +215,7 @@ export const getRecommendedJobs = async (req: Request, res: Response) => {
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
-          client: { select: { fullName: true } },
+          client: { select: { id: true, fullName: true } },
           skillsRequired: { 
             select: { 
               id: true, 
@@ -247,7 +247,7 @@ export const getRecommendedJobs = async (req: Request, res: Response) => {
         }
       },
       include: {
-        client: { select: { fullName: true } },
+        client: { select: { id: true, fullName: true } },
         skillsRequired: { 
           select: { 
             id: true, 
@@ -395,7 +395,7 @@ export const getFreelancerProfileWithAllStats = async (req: Request, res: Respon
           status: true, 
           budget: true, 
           type: true, 
-          client: { select: { fullName: true, email: true } }, 
+          client: { select: { id: true, fullName: true, email: true } }, 
           createdAt: true 
         }
       }),

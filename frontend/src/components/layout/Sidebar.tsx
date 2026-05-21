@@ -12,6 +12,7 @@ const Sidebar = () => {
 
   const clientLinks = [
     { name: 'Dashboard', href: '/client', icon: 'dashboard' },
+    { name: 'My Profile', href: '/client/profile', icon: 'account_circle' },
     { name: 'Active Gigs', href: '/client/active', icon: 'work' },
     { name: 'Post a Gig', href: '/client/post-gig', icon: 'add_circle' },
     { name: 'Payments', href: '/client/payments', icon: 'payments' },

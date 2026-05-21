@@ -116,7 +116,12 @@ export const getClientPublicProfile = async (req: Request, res: Response) => {
           select: {
             bio: true,
             profilePicLink: true,
+            bannerLink: true,
+            videoLink: true,
             location: true,
+            phoneNumber: true,
+            latitude: true,
+            longitude: true,
           },
         },
 
@@ -286,6 +291,7 @@ export const getPublicJobDetails = async (req: Request, res: Response) => {
 
         client: {
           select: {
+            id: true,
             fullName: true,
             profile: {
               select: {

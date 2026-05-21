@@ -28,6 +28,7 @@ export const MainSidebarContent = () => {
 
     const clientItems: NavItemType[] = [
         { label: "Dashboard", href: "/client", icon: Home01 },
+        { label: "My Profile", href: "/client/profile", icon: User01 },
         { label: "Active Gigs", href: "/client/active", icon: Briefcase01 },
         { label: "Post a Gig", href: "/client/post-gig", icon: Plus },
         { label: "Payments", href: "/client/payments", icon: CreditCard01 },
