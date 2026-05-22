@@ -1,18 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Avatar } from '@/components/base/avatar/avatar';
 import { Button } from '@/components/base/buttons/button';
-import { ShieldTick, AlertCircle, Users01, Briefcase01 } from '@untitledui/icons';
-
-interface Verifications {
-  isEmailVerified: boolean;
-  isPhoneNumberVerified: boolean;
-  isVerified: boolean;
-  kycStatus: string;
-}
+import { ShieldTick, AlertCircle, Mail01, CheckCircle, Loading01 } from '@untitledui/icons';
 
 interface Financials {
   lifetimeSpentGross: number;
@@ -53,6 +46,13 @@ const ClientProfile = () => {
   const [detecting, setDetecting] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // --- IDENTITY TRANSACTION OTP STATES ---
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailOtp, setEmailOtp] = useState<string[]>(new Array(6).fill(""));
+  const [actionLoading, setActionLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
+  const inputRefs = useRef<HTMLInputElement[]>([]);
 
   const [formData, setFormData] = useState({
     bio: '',
@@ -99,6 +99,67 @@ const ClientProfile = () => {
     fetchProfileData();
   }, []);
 
+  // --- IDENTITY VERIFICATION OPERATIONAL HANDLERS ---
+  const handleRequestEmailOtp = async () => {
+    setActionLoading(true);
+    setFeedbackMessage({ type: '', text: '' });
+    try {
+      const res = await api.post('/api/v1/user/auth/send-email-otp');
+      if (res.data.success) {
+        setShowEmailInput(true);
+        setFeedbackMessage({ type: 'success', text: '6-digit validation code dispatched to inbox!' });
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || "Failed to trigger email validation code." 
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOtpChange = (value: string, index: number) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...emailOtp];
+    newOtp[index] = value.substring(value.length - 1);
+    setEmailOtp(newOtp);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !emailOtp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    const finalOtp = emailOtp.join("");
+    if (finalOtp.length < 6) return;
+
+    setActionLoading(true);
+    setFeedbackMessage({ type: '', text: '' });
+    try {
+      const res = await api.post('/api/v1/user/auth/verify-email', { otp: finalOtp });
+      if (res.data.success) {
+        setFeedbackMessage({ type: 'success', text: 'Email verified successfully!' });
+        setShowEmailInput(false);
+        setEmailOtp(new Array(6).fill(""));
+        await fetchProfileData(); 
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || "Incorrect code entered." 
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -114,8 +175,6 @@ const ClientProfile = () => {
 
       if (logoFile) payload.append('companyLogo', logoFile);
       if (videoFile) payload.append('businessVideo', videoFile);
-      // Banner upload is currently optional or not explicitly supported in onboardClient backend endpoint,
-      // but let's send it in case the backend expands or supports it via avatar/banner updates.
       if (bannerFile) payload.append('banner', bannerFile);
 
       const res = await api.patch('/api/v1/client/onboard', payload);
@@ -190,6 +249,7 @@ const ClientProfile = () => {
     <DashboardLayout>
       <main className="pt-8 pb-20">
         <div className="max-w-7xl mx-auto">
+          
           {/* Header Banner */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
             <div className="h-48 relative group">
@@ -326,16 +386,19 @@ const ClientProfile = () => {
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-3">
                       {profile?.account?.fullName}
                       {profile?.account?.isVerified && (
-                        <ShieldTick className="size-6 text-emerald-500 fill-emerald-50" />
+                        <ShieldTick className="size-7 text-blue-600 fill-blue-50 animate-pulse" />
                       )}
                     </h1>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                        {profile?.account?.isEmailVerified ? '✓ Email Verified' : '⚠ Email Unverified'}
+
+                    {/* HIGH IMPORTANCE: Premium Trust Compliance Identity Badges Display */}
+                    <div className="flex flex-wrap gap-2.5 mb-4">
+                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-rose-50 text-rose-700 border-rose-200/80 animate-pulse'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.isEmailVerified ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        {profile?.account?.isEmailVerified ? 'Corporate Email Verified' : 'Action Required: Email Unverified'}
                       </span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                        {profile?.account?.isPhoneNumberVerified ? '✓ SMS Linked' : '⚠ SMS Unlinked'}
+                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-amber-50 text-amber-700 border-amber-200/80'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.isPhoneNumberVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        {profile?.account?.isPhoneNumberVerified ? 'Mobile Terminal Connected' : 'Mobile Gateway Unlinked'}
                       </span>
                     </div>
 
@@ -378,25 +441,135 @@ const ClientProfile = () => {
             </div>
           </div>
 
-          {/* Stats Bento Layout */}
+          {/* Split Content Rows for Metrics vs Verifications Dashboard */}
           {!isEditing && profile && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-xs">
-                <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Active Jobs</p>
-                <h3 className="text-4xl text-slate-900 font-black tracking-tight">{profile.activeGigs}</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left Column Operations Bento Cards */}
+              <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6 h-fit">
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Active Jobs</p>
+                  <h3 className="text-4xl text-slate-900 font-black tracking-tight">{profile.activeGigs}</h3>
+                </div>
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Total Hired</p>
+                  <h3 className="text-4xl text-slate-900 font-black tracking-tight">{profile.totalHired}</h3>
+                </div>
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Gross Capital Spent</p>
+                  <h3 className="text-3xl text-slate-900 font-black tracking-tight pt-1">
+                    ${(profile.financials?.lifetimeSpentGross || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </h3>
+                </div>
               </div>
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-xs">
-                <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Total Hired</p>
-                <h3 className="text-4xl text-slate-900 font-black tracking-tight">{profile.totalHired}</h3>
-              </div>
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-xs">
-                <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Gross Capital Spent</p>
-                <h3 className="text-4xl text-slate-900 font-black tracking-tight">
-                  ${profile.financials.lifetimeSpentGross.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </h3>
+
+              {/* Right Column: Premium Interactive Identity Security Side-Bento */}
+              <div className="lg:col-span-4 space-y-6">
+                <div className="bg-white p-6 border border-slate-100 rounded-3xl shadow-sm flex flex-col justify-between h-fit">
+                  <div>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                      <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest">Identity Gateway</h3>
+                      <span className={`h-2 w-2 rounded-full ${profile.account?.isVerified ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-amber-400'}`} />
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Email Row */}
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <Mail01 className={`size-5 ${profile.account?.isEmailVerified ? 'text-emerald-600' : 'text-slate-400'}`} />
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">Email Verification</p>
+                            <p className="text-[11px] text-slate-500 truncate max-w-[130px]">{profile.account?.email}</p>
+                          </div>
+                        </div>
+                        {profile.account?.isEmailVerified ? (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                            <CheckCircle className="size-3" /> Verified
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={handleRequestEmailOtp}
+                            disabled={actionLoading}
+                            className="text-[11px] font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition active:scale-95 whitespace-nowrap shadow-xs"
+                          >
+                            Verify Now
+                          </button>
+                        )}
+                      </div>
+
+                      {/* SMS Row */}
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-lg text-slate-500">smartphone</span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">Mobile Terminal Status</p>
+                            <p className="text-[11px] text-slate-500">{profile.account?.phoneNumber || "Unlinked"}</p>
+                          </div>
+                        </div>
+                        {profile.account?.isPhoneNumberVerified ? (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                            <CheckCircle className="size-3" /> Connected
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                            <AlertCircle className="size-3" /> Pending Link
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {feedbackMessage.text && (
+                    <p className={`text-xs font-semibold mt-3 p-2 rounded-lg text-center ${feedbackMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+                      {feedbackMessage.text}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
+
+          {/* Inline Expanded Entry Dropdown Form Grid Box */}
+          {showEmailInput && (
+            <div className="w-full bg-blue-50/40 border border-blue-200/60 rounded-3xl p-6 mt-6 transition-all duration-300">
+              <div className="max-w-md mx-auto text-center space-y-4">
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">Confirm Security Access Token</h4>
+                  <p className="text-xs text-slate-500">Provide the 6-digit confirmation key deployed to your corporate email handle inbox.</p>
+                </div>
+                
+                <div className="flex justify-center gap-2">
+                  {emailOtp.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(e.target.value, idx)}
+                      onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                      ref={(el) => { if (el) inputRefs.current[idx] = el; }}
+                      className="w-11 h-12 text-center text-lg font-bold border border-slate-300 bg-white rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all shadow-xs text-slate-900"
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-3 justify-center">
+                  <button onClick={() => setShowEmailInput(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleVerifyEmail}
+                    disabled={actionLoading || emailOtp.includes("")}
+                    className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:bg-slate-300 transition flex items-center gap-2 shadow-sm"
+                  >
+                    {actionLoading && <Loading01 className="size-3 animate-spin" />}
+                    Confirm Identity
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
     </DashboardLayout>

@@ -5,7 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { StatCardPremium } from '../../components/common/StatCardPremium';
 import { FreelancerCardPremium } from '../../components/common/FreelancerCardPremium';
 import { Button } from '@/components/base/buttons/button';
-import { Plus, Users01, ShieldTick, AlertCircle } from '@untitledui/icons';
+import { Plus, Users01, ShieldTick } from '@untitledui/icons';
 import useAuth from '@/hooks/useAuth';
 import api from '@/lib/api';
 
@@ -58,44 +58,42 @@ const BusinessDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // UNIFIED CALL: Diverted from 'dashboard-stats' to hit your primary profile data resource route
-        const [profileRes, recsRes] = await Promise.all([
-          api.get('/api/v1/client/get-profile-data'),
-          api.get('/api/v1/client/recommendations')
-        ]);
+  const fetchDashboardData = async () => {
+    try {
+      const [profileRes, recsRes] = await Promise.all([
+        api.get('/api/v1/client/get-profile-data'),
+        api.get('/api/v1/client/recommendations')
+      ]);
 
-        if (profileRes.data.success) {
-          const { account, activeGigs, totalHired, pendingProposals, completedGigs, cancelledGigs, totalProducts, financials } = profileRes.data.data;
-          
-          setAccount(account);
-          setStats({
-            activeGigs,
-            totalHired,
-            pendingProposals,
-            completedGigs,
-            cancelledGigs,
-            totalProducts
-          });
-          setFinancials(financials);
+      if (profileRes.data.success) {
+        const { account, activeGigs, totalHired, pendingProposals, completedGigs, cancelledGigs, totalProducts, financials } = profileRes.data.data;
+        
+        setAccount(account);
+        setStats({
+          activeGigs,
+          totalHired,
+          pendingProposals,
+          completedGigs,
+          cancelledGigs,
+          totalProducts
+        });
+        setFinancials(financials);
 
-          // Check if onboarding is needed (empty bio, location, or phoneNumber)
-          if (!account.bio || account.bio.length < 10 || !account.location || !account.phoneNumber) {
-            setNeedsOnboarding(true);
-          }
+        if (!account.bio || account.bio.length < 10 || !account.location || !account.phoneNumber) {
+          setNeedsOnboarding(true);
         }
-        if (recsRes.data.success) {
-          setRecommendations(recsRes.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
       }
-    };
+      if (recsRes.data.success) {
+        setRecommendations(recsRes.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDashboardData();
   }, []);
 
@@ -142,40 +140,19 @@ const BusinessDashboard = () => {
           <h1 className="text-4xl font-extrabold tracking-tighter mb-2 font-headline flex items-center gap-3">
             Hello, {account?.fullName || user?.fullName || 'Business Owner'}
             {account?.isVerified && (
-              <ShieldTick className="size-6 text-emerald-500 fill-emerald-50" />
+              <ShieldTick className="size-7 text-blue-600 fill-blue-50" />
             )}
           </h1>
-          
-          <div className="flex flex-wrap gap-2 mt-2">
-            {account?.isEmailVerified ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Email Verified
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                <AlertCircle className="size-3" /> Verify Email
-              </span>
-            )}
-
-            {account?.isPhoneNumberVerified ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                SMS Linked
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                <AlertCircle className="size-3" /> Link Mobile
-              </span>
-            )}
-          </div>
+          <p className="text-slate-500 text-sm font-medium">Manage corporate tasks and match local freelancers.</p>
         </div>
 
         {account && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[180px]">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[200px] shadow-xs">
             <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
               N⚡️
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Nomad Score</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nomad Score</p>
               <h4 className="text-xl font-black text-slate-900 tracking-tight">
                 {account.nomadScore} <span className="text-xs font-medium text-slate-400">/ 100</span>
               </h4>
@@ -184,7 +161,7 @@ const BusinessDashboard = () => {
         )}
       </header>
 
-      {/* Stats Bento Layout */}
+      {/* Bento Grid Layer */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <StatCardPremium label="Active Projects" value={stats.activeGigs.toString()} suffix="Active Gigs" />
         <StatCardPremium label="Total Hired" value={stats.totalHired.toString()} suffix="Freelancers" />
@@ -196,15 +173,11 @@ const BusinessDashboard = () => {
               {stats.pendingProposals} Pending Proposals
             </h3>
           </div>
-          <Button 
-            className="w-fit"
-            color="primary" 
-            size="md"
-          >
+          <Button className="w-fit" color="primary" size="md">
             Review Now
           </Button>
-          <div className="absolute -right-4 -bottom-4 text-slate-100">
-             <Users01 className="size-32" />
+          <div className="absolute -right-4 -bottom-4 text-slate-100/70 pointer-events-none">
+             <span className="material-symbols-outlined text-9xl opacity-10">group</span>
           </div>
         </div>
       </div>
@@ -228,11 +201,11 @@ const BusinessDashboard = () => {
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Capital Outflow</p>
             <h5 className="text-xl font-extrabold tracking-tight">
-              ${financials.lifetimeSpentGross.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${(financials.lifetimeSpentGross ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h5>
           </div>
           <p className="text-[10px] text-slate-400 mt-2">
-            Net Transacted: ${financials.lifetimeNetSpent.toFixed(2)} | Gateway Fees: ${financials.lifetimeFeesPaid.toFixed(2)}
+            Net Transacted: ${(financials.lifetimeNetSpent ?? 0).toFixed(2)} | Gateway Fees: ${(financials.lifetimeFeesPaid ?? 0).toFixed(2)}
           </p>
         </div>
       </div>
@@ -242,11 +215,7 @@ const BusinessDashboard = () => {
         <div className="flex items-end justify-between mb-8">
           <h2 className="text-3xl font-extrabold tracking-tight font-headline">Matching Feed</h2>
         </div>
-        {loading ? (
-          <div className="flex justify-center p-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-solid"></div>
-          </div>
-        ) : recommendations.length > 0 ? (
+        {recommendations.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {recommendations.map((freelancer, idx) => (
               <FreelancerCardPremium key={idx} data={formatFreelancerData(freelancer)} />

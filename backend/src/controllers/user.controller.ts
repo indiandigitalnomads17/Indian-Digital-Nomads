@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/prisma";
 import argon2 from "argon2";
+import crypto from 'crypto';
+
+
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -169,3 +172,5 @@ export const setupRole = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+

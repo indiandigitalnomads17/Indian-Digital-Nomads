@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Avatar } from '@/components/base/avatar/avatar';
 import { Button } from '@/components/base/buttons/button';
+import { ShieldTick, AlertCircle, Mail01, CheckCircle, Loading01 } from '@untitledui/icons';
 
 type UserRole = 'CLIENT' | 'FREELANCER';
 type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -157,9 +158,9 @@ interface ProfileData {
     currentBatch: Project[];
   };
   earningsLedgerSummary: EarningsLedgerSummary;
-  reviewsRec: Review[]; // Retained backend array mapping fields
-  proposals: Proposal[];   // Retained custom raw mapping models
-  jobsAsFreelancer: ActiveJob[]; // Retained inline models fallback
+  reviewsRec: Review[]; 
+  proposals: Proposal[];   
+  jobsAsFreelancer: ActiveJob[]; 
 }
 
 const FreelancerProfile = () => {
@@ -173,11 +174,18 @@ const FreelancerProfile = () => {
   
   const [activeTab, setActiveTab] = useState<'showcase' | 'contracts' | 'proposals' | 'reviews'>('showcase');
 
+  // --- INTEGRATED IDENTITY OTP STATE HANDLERS ---
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailOtp, setEmailOtp] = useState<string[]>(new Array(6).fill(""));
+  const [actionLoading, setActionLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
+  const inputRefs = useRef<HTMLInputElement[]>([]);
+
   // Strict 4-Tier Filtering Selectors State Elements
-  const [selectedParentId, setSelectedParentId] = useState<string>(''); // Tier 1
-  const [selectedSubId, setSelectedSubId] = useState<string>('');    // Tier 2
-  const [selectedLeafId, setSelectedLeafId] = useState<string>('');   // Tier 3
-  const [selectedAtomicLeafId, setSelectedAtomicLeafId] = useState<string>(''); // Tier 4
+  const [selectedParentId, setSelectedParentId] = useState<string>(''); 
+  const [selectedSubId, setSelectedSubId] = useState<string>('');    
+  const [selectedLeafId, setSelectedLeafId] = useState<string>('');   
+  const [selectedAtomicLeafId, setSelectedAtomicLeafId] = useState<string>(''); 
 
   const [formData, setFormData] = useState({
     bio: '',
@@ -200,45 +208,106 @@ const FreelancerProfile = () => {
 
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profileRes, skillsRes] = await Promise.all([
-          api.get('/api/v1/freelancer/get-profile-data'), 
-          api.get('/api/v1/skills/tree')
-        ]);
+  const fetchProfileDashboardDataset = async () => {
+    try {
+      const [profileRes, skillsRes] = await Promise.all([
+        api.get('/api/v1/freelancer/get-profile-data'), 
+        api.get('/api/v1/skills/tree')
+      ]);
 
-        if (profileRes.data.success) {
-          const data = profileRes.data.data as ProfileData;
-          setProfile(data);
-          setFormData({
-            bio: data.profileMetadata?.bio || '',
-            location: data.profileMetadata?.location || '',
-            phoneNumber: data.account?.phoneNumber || '',
-            hourlyRate: data.profileMetadata?.rates?.hourlyRate !== undefined && data.profileMetadata?.rates?.hourlyRate !== null 
-              ? String(data.profileMetadata.rates.hourlyRate) 
-              : '',
-            isHourly: data.profileMetadata?.rates?.isHourly || false,
-            preferredJobType: data.profileMetadata?.rates?.preferredJobType || 'FIXED_PRICE',
-            skills: data.profileMetadata?.skillsTree.map((s: SkillNode) => s.id) || [],
-            latitude: data.profileMetadata?.latitude || 0,
-            longitude: data.profileMetadata?.longitude || 0,
-          });
-          setBannerPreview(data.profileMetadata?.bannerLink || null);
-          setProfilePicPreview(data.profileMetadata?.profilePicLink || null);
-          setVideoPreview(data.profileMetadata?.videoLink || null);
-        }
-        if (skillsRes.data.success) {
-          setAllSkills(skillsRes.data.data);
-        }
-      } catch (err) {
-        console.error("Failed to load secure database datasets:", err);
-      } finally {
-        setLoading(false);
+      if (profileRes.data.success) {
+        const data = profileRes.data.data as ProfileData;
+        setProfile(data);
+        setFormData({
+          bio: data.profileMetadata?.bio || '',
+          location: data.profileMetadata?.location || '',
+          phoneNumber: data.account?.phoneNumber || '',
+          hourlyRate: data.profileMetadata?.rates?.hourlyRate !== undefined && data.profileMetadata?.rates?.hourlyRate !== null 
+            ? String(data.profileMetadata.rates.hourlyRate) 
+            : '',
+          isHourly: data.profileMetadata?.rates?.isHourly || false,
+          preferredJobType: data.profileMetadata?.rates?.preferredJobType || 'FIXED_PRICE',
+          skills: data.profileMetadata?.skillsTree.map((s: SkillNode) => s.id) || [],
+          latitude: data.profileMetadata?.latitude || 0,
+          longitude: data.profileMetadata?.longitude || 0,
+        });
+        setBannerPreview(data.profileMetadata?.bannerLink || null);
+        setProfilePicPreview(data.profileMetadata?.profilePicLink || null);
+        setVideoPreview(data.profileMetadata?.videoLink || null);
       }
-    };
-    fetchData();
+      if (skillsRes.data.success) {
+        setAllSkills(skillsRes.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load secure database datasets:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileDashboardDataset();
   }, []);
+
+  const handleRequestEmailOtp = async () => {
+    setActionLoading(true);
+    setFeedbackMessage({ type: '', text: '' });
+    try {
+      const res = await api.post('/api/v1/user/auth/send-email-otp');
+      if (res.data.success) {
+        setShowEmailInput(true);
+        setFeedbackMessage({ type: 'success', text: '6-digit code dispatched to your inbox!' });
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || "Failed to trigger email validation code." 
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOtpChange = (value: string, index: number) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...emailOtp];
+    newOtp[index] = value.substring(value.length - 1);
+    setEmailOtp(newOtp);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !emailOtp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    const finalOtp = emailOtp.join("");
+    if (finalOtp.length < 6) return;
+
+    setActionLoading(true);
+    setFeedbackMessage({ type: '', text: '' });
+    try {
+      const res = await api.post('/api/v1/user/auth/verify-email', { otp: finalOtp });
+      if (res.data.success) {
+        setFeedbackMessage({ type: 'success', text: 'Email verified successfully!' });
+        setShowEmailInput(false);
+        setEmailOtp(new Array(6).fill(""));
+        await fetchProfileDashboardDataset(); 
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || "Incorrect verification token code entered." 
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const renderSkillHierarchy = (skill: SkillNode) => {
     const parts: string[] = [];
@@ -321,13 +390,7 @@ const FreelancerProfile = () => {
         setBannerFile(null);
         setProfilePicFile(null);
         setVideoFile(null);
-        
-        const profileRes = await api.get('/api/v1/freelancer/get-profile-data');
-        const refreshedData = profileRes.data.data;
-        setProfile(refreshedData);
-        setBannerPreview(refreshedData.profileMetadata?.bannerLink || null);
-        setProfilePicPreview(refreshedData.profileMetadata?.profilePicLink || null);
-        setVideoPreview(refreshedData.profileMetadata?.videoLink || null);
+        await fetchProfileDashboardDataset();
       }
     } catch (err: any) {
       if (err.response?.status === 400 && err.response.data.errors) {
@@ -387,7 +450,6 @@ const FreelancerProfile = () => {
     }
   };
 
-  // 4-Tier Destructuring Level Resolvers
   const subSkillOptions = allSkills.find(p => p.id === selectedParentId)?.subSkills || [];
   const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
   const atomicLeafSkillOptions = leafSkillOptions.find(l => l.id === selectedLeafId)?.subSkills || [];
@@ -398,6 +460,8 @@ const FreelancerProfile = () => {
     <DashboardLayout>
       <main className="pt-8 pb-20">
         <div className="max-w-7xl mx-auto">
+          
+          {/* Top Main Banner Widget Card */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
             <div className="h-48 relative group">
               {bannerPreview ? (
@@ -523,7 +587,6 @@ const FreelancerProfile = () => {
                     </div>
                   </div>
 
-                  {/* Complete 4-Tier Structural Taxonomy Node Entry Dropdown Chain */}
                   <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div>
                       <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Core Expertise Mapping</label>
@@ -614,7 +677,6 @@ const FreelancerProfile = () => {
                           <p className="text-xs text-slate-400 font-bold italic pl-1">No hierarchy paths selected yet.</p>
                         )}
                       </div>
-                      {errors.skills && <p className="text-[10px] font-bold text-red-500 mt-2">{errors.skills._errors?.[0]}</p>}
                     </div>
                   </div>
 
@@ -628,20 +690,23 @@ const FreelancerProfile = () => {
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-3">
                       {profile?.account?.fullName}
                       {profile?.account?.verifications?.isGlobalVerified && (
-                        <span className="material-symbols-outlined text-blue-600 bg-blue-50 p-1 rounded-full text-base border border-blue-200">verified</span>
+                        <ShieldTick className="size-7 text-blue-600 fill-blue-50 animate-pulse" />
                       )}
                     </h1>
-                    
-                    {/* Security Compliance Ladder Verification Badges Grid */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                        {profile?.account?.verifications?.isEmailVerified ? '✓ Email Verified' : '⚠ Email Unverified'}
+
+                    {/* HIGH IMPORTANCE: Premium Compliance Identity Verification Flags Grid */}
+                    <div className="flex flex-wrap gap-2.5 mb-4">
+                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-rose-50 text-rose-700 border-rose-200/80 animate-pulse'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        {profile?.account?.verifications?.isEmailVerified ? 'Nomad Email Verified' : 'Action Required: Email Unverified'}
                       </span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                        {profile?.account?.verifications?.isPhoneNumberVerified ? '✓ SMS Linked' : '⚠ SMS Unlinked'}
+                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-amber-50 text-amber-700 border-amber-200/80'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        {profile?.account?.verifications?.isPhoneNumberVerified ? 'Secure SMS Terminal Bound' : 'Mobile Gateway Unlinked'}
                       </span>
-                      <span className="bg-slate-900 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                        KYC: {profile?.account?.verifications?.kycStatus}
+                      <span className="bg-slate-900 text-white text-[11px] px-3.5 py-1 rounded-xl font-extrabold uppercase tracking-wider shadow-xs flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                        KYC Registry: {profile?.account?.verifications?.kycStatus || 'NOT_SUBMITTED'}
                       </span>
                     </div>
 
@@ -717,9 +782,6 @@ const FreelancerProfile = () => {
                            <span className="tracking-tight">{renderSkillHierarchy(skill)}</span>
                          </div>
                        ))}
-                       {(!profile?.profileMetadata?.skillsTree || profile?.profileMetadata?.skillsTree.length === 0) && (
-                         <p className="text-xs text-slate-400 font-bold italic">No expertise structural markers mapped yet.</p>
-                       )}
                     </div>
                   </div>
                 </div>
@@ -727,8 +789,9 @@ const FreelancerProfile = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
+          {/* Subsections Content Framework Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 space-y-6">
                <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex gap-2 overflow-x-auto">
                  {[
                    { id: 'showcase', label: 'Portfolio Showcase', count: profile?.portfolioStore?.totalProjectsListed || 0 },
@@ -742,6 +805,47 @@ const FreelancerProfile = () => {
                  ))}
                </div>
 
+               {/* --- DYNAMIC OTP INPUT CODE SLIDE PANELS --- */}
+               {showEmailInput && (
+                 <div className="w-full bg-blue-50/40 border border-blue-200/60 rounded-3xl p-6 transition-all duration-300">
+                   <div className="max-w-md mx-auto text-center space-y-4">
+                     <div>
+                       <h4 className="text-base font-bold text-slate-900">Confirm OTP Token Code</h4>
+                       <p className="text-xs text-slate-500">Type the 6-digit verification code sent to your email handle dynamically.</p>
+                     </div>
+                     
+                     <div className="flex justify-center gap-2">
+                       {emailOtp.map((digit, idx) => (
+                         <input
+                           key={idx}
+                           type="text"
+                           maxLength={1}
+                           value={digit}
+                           onChange={(e) => handleOtpChange(e.target.value, idx)}
+                           onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                           ref={(el) => { if (el) inputRefs.current[idx] = el; }}
+                           className="w-11 h-12 text-center text-lg font-bold border border-slate-300 bg-white rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all shadow-xs text-slate-900"
+                         />
+                       ))}
+                     </div>
+
+                     <div className="flex gap-3 justify-center">
+                       <button onClick={() => setShowEmailInput(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                         Cancel
+                       </button>
+                       <button
+                         onClick={handleVerifyEmail}
+                         disabled={actionLoading || emailOtp.includes("")}
+                         className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:bg-slate-300 transition flex items-center gap-2 shadow-sm"
+                       >
+                         {actionLoading && <Loading01 className="size-3 animate-spin" />}
+                         Submit Verification
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               )}
+
                {activeTab === 'showcase' && (
                  <div className="space-y-4">
                     <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -752,20 +856,13 @@ const FreelancerProfile = () => {
                     <div className="grid grid-cols-1 gap-4">
                       {profile?.portfolioStore?.currentBatch && profile.portfolioStore.currentBatch.length > 0 ? (
                         profile.portfolioStore.currentBatch.map((project: Project) => (
-                          <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 flex gap-6 items-start hover:border-blue-400 transition-all group shadow-sm">
+                          <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex gap-6 items-start hover:border-blue-400 transition-all group">
                             <div className="w-40 h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 relative">
                               {project.images?.[0] ? <img src={project.images[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><span className="material-symbols-outlined text-4xl">image</span></div>}
                             </div>
                             <div className="flex-1">
                               <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-tight">{project.title}</h3>
                               <p className="text-xs text-slate-500 mb-3 line-clamp-2">{project.description}</p>
-                              <div className="flex flex-col space-y-1">
-                                {project.skillsUsed.map(s => (
-                                  <span key={s.id} className="text-[10px] font-bold text-slate-500 truncate bg-slate-50 px-2 py-0.5 rounded-md border max-w-xs block">
-                                    {renderSkillHierarchy(s)}
-                                  </span>
-                                ))}
-                              </div>
                             </div>
                           </div>
                         ))
@@ -784,14 +881,11 @@ const FreelancerProfile = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest rounded-md">{job.status}</span>
-                              <span className="text-[10px] text-slate-400 font-bold">{new Date(job.createdAt).toLocaleDateString()}</span>
                             </div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight">{job.title}</h3>
-                            <p className="text-xs text-slate-400 font-medium">Client: <a href={`/client/profile/${job.client.id}`} className="text-blue-600 hover:text-blue-800 font-bold hover:underline transition-all">{job.client.fullName}</a> ({job.client.email})</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xl font-black text-slate-900">₹{Number(job.budget).toLocaleString()}</p>
-                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{job.type === 'HOURLY' ? '/hr billing setup' : 'Fixed Milestone total'}</p>
                           </div>
                         </div>
                       ))
@@ -808,12 +902,9 @@ const FreelancerProfile = () => {
                         <div key={prop.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex justify-between items-center">
                           <div>
                             <h4 className="text-sm font-black text-slate-900 mb-1">{prop.job.title}</h4>
-                            <p className="text-xs text-slate-400 font-medium">Job Target Budget: <span className="font-bold text-slate-600">₹{Number(prop.job.budget).toLocaleString()}</span></p>
-                            <p className="text-[10px] font-semibold text-slate-400 mt-2">Submitted {new Date(prop.createdAt).toLocaleDateString()}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-base font-black text-slate-900">Bid: ₹{Number(prop.bidAmount).toLocaleString()}</p>
-                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider mt-1 ${prop.status === 'ACCEPTED' ? 'bg-green-50 text-green-600 border border-green-100' : prop.status === 'REJECTED' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider mt-1 ${prop.status === 'ACCEPTED' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
                               {prop.status}
                             </span>
                           </div>
@@ -830,24 +921,7 @@ const FreelancerProfile = () => {
                     {profile?.reviewsRec && profile.reviewsRec.length > 0 ? (
                       profile.reviewsRec.map((review: Review) => (
                         <div key={review.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden">
-                                {review.reviewer.profile?.profilePicLink ? <img src={review.reviewer.profile.profilePicLink} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">{review.reviewer.fullName.charAt(0)}</div>}
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-black text-slate-900 leading-none mb-1">{review.reviewer.fullName}</h4>
-                                <p className="text-[11px] text-slate-400 font-medium">Contract: {review.job.title}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center text-amber-500 gap-0.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                              <span className="material-symbols-outlined text-sm fill-current">star</span>
-                              <span className="text-xs font-black">{review.rating}</span>
-                            </div>
-                          </div>
-                          {review.comment && (
-                            <p className="text-xs text-slate-600 font-semibold italic bg-slate-50/50 p-3 rounded-xl border border-slate-50 leading-relaxed">"{review.comment}"</p>
-                          )}
+                          <p className="text-xs text-slate-600 font-semibold italic">"{review.comment}"</p>
                         </div>
                       ))
                     ) : (
@@ -857,7 +931,72 @@ const FreelancerProfile = () => {
                )}
             </div>
 
-            <div className="space-y-8">
+            {/* Right Side Column Panels - Identity center integrated here */}
+            <div className="lg:col-span-4 space-y-6">
+               
+               {/* HIGH-DENSITY INTERACTIVE TRUST BADGE SECURITY CENTER PANEL */}
+               <div className="bg-white p-6 border border-slate-100 rounded-3xl shadow-sm flex flex-col justify-between h-fit">
+                 <div>
+                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                     <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest">Identity Security</h3>
+                     <span className={`h-2 w-2 rounded-full ${profile?.account?.verifications?.isGlobalVerified ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-amber-400'}`} />
+                   </div>
+                   
+                   <div className="space-y-4">
+                     {/* Row: Email Validation Mapping */}
+                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                       <div className="flex items-center gap-3">
+                         <Mail01 className={`size-5 ${profile?.account?.verifications?.isEmailVerified ? 'text-emerald-600' : 'text-slate-400'}`} />
+                         <div>
+                           <p className="text-xs font-bold text-slate-900">Email Verification</p>
+                           <p className="text-[11px] text-slate-500 truncate max-w-[130px]">{profile?.account?.email}</p>
+                         </div>
+                       </div>
+                       {profile?.account?.verifications?.isEmailVerified ? (
+                         <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                           <CheckCircle className="size-3" /> Secure
+                         </span>
+                       ) : (
+                         <button 
+                           onClick={handleRequestEmailOtp}
+                           disabled={actionLoading}
+                           className="text-[11px] font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition active:scale-95 whitespace-nowrap shadow-xs"
+                         >
+                           Verify
+                         </button>
+                       )}
+                     </div>
+
+                     {/* Row: SMS Phone Link Mapping */}
+                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                       <div className="flex items-center gap-3">
+                         <span className="material-symbols-outlined text-lg text-slate-500">smartphone</span>
+                         <div>
+                           <p className="text-xs font-bold text-slate-900">Mobile SMS Link</p>
+                           <p className="text-[11px] text-slate-500">{profile?.account?.phoneNumber || "Unlinked"}</p>
+                         </div>
+                       </div>
+                       {profile?.account?.verifications?.isPhoneNumberVerified ? (
+                         <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                           <CheckCircle className="size-3" /> Linked
+                         </span>
+                       ) : (
+                         <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                           <AlertCircle className="size-3" /> Pending
+                         </span>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Toast Messages component panel layout */}
+                 {feedbackMessage.text && (
+                   <p className={`text-xs font-semibold mt-3 p-2 rounded-lg text-center ${feedbackMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+                     {feedbackMessage.text}
+                   </p>
+                 )}
+               </div>
+
                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-8 pb-4 border-b border-slate-50">Operational Analytics</h3>
                   <div className="space-y-6">
@@ -885,7 +1024,6 @@ const FreelancerProfile = () => {
                   </div>
                </div>
 
-               {/* Complete High-Density Financial Outflow Earnings Box Card */}
                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6 pb-4 border-b border-slate-50">Financial Ledger</h3>
                   <div className="space-y-4">

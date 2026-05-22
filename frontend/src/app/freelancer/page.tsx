@@ -31,6 +31,7 @@ interface Job {
 const FreelancerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  
   const [stats, setStats] = useState({ activeJobs: 0, pendingProposals: 0, monthlyEarnings: 0 });
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,10 +54,13 @@ const FreelancerDashboard = () => {
         setJobs(jobsRes.data.data);
       }
       
-      // Check if profile is complete (e.g., bio exists)
-      const profile = profileRes.data.data.profile;
-      if (!profile || !profile.bio || profile.bio.length < 10) {
-        setNeedsOnboarding(true);
+      if (profileRes.data.success) {
+        const bioText = profileRes.data.data.profileMetadata?.bio || "";
+        if (!bioText || bioText.trim().length < 10) {
+          setNeedsOnboarding(true);
+        } else {
+          setNeedsOnboarding(false);
+        }
       }
     } catch (error: any) {
       console.error("Error fetching freelancer dashboard data:", error);
@@ -123,7 +127,9 @@ const FreelancerDashboard = () => {
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div>
               <p className="text-[10px] font-black uppercase text-blue-600 tracking-[0.3em] mb-3">Available Match</p>
-              <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-2 font-headline">Nomad Marketplace</h1>
+              <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-2 font-headline flex items-center gap-2">
+                Nomad Marketplace
+              </h1>
               <p className="text-slate-500 font-semibold italic text-sm">Discover high-value opportunities within your reach.</p>
             </div>
             <div className="flex items-center gap-3 bg-white border border-slate-100 p-2 rounded-2xl shadow-sm px-4">
@@ -151,7 +157,7 @@ const FreelancerDashboard = () => {
           )}
         </div>
 
-        {/* Sidebar Metrics */}
+        {/* Sidebar Controls */}
         <div className="xl:col-span-4 space-y-8">
           {/* Availability Toggle */}
           <div className="bg-slate-900 p-8 rounded-[35px] shadow-2xl shadow-slate-300 relative overflow-hidden group">
@@ -173,7 +179,7 @@ const FreelancerDashboard = () => {
           <div className="bg-white p-8 rounded-[35px] border border-slate-50 shadow-xl shadow-slate-200/40">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 text-center">Monthly Revenue</h4>
             <div className="text-5xl font-black text-slate-900 mb-8 text-center tracking-tighter">
-              ₹{stats.monthlyEarnings.toLocaleString()}
+              ₹{(stats.monthlyEarnings ?? 0).toLocaleString()}
             </div>
             <div className="flex items-end gap-1.5 h-16 px-4">
               {[40, 60, 50, 80, 90, 100, 30].map((h, i) => (
