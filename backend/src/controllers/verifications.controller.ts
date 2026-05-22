@@ -6,11 +6,16 @@ import prisma from "../config/prisma";
 
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, 
   auth: {
     user: 'indiandigitalnomads17@gmail.com',    
     pass: process.env.GMAIL_APP_PASSWORD,       
   },
+  tls: {
+    rejectUnauthorized: true
+  }
 });
 
 
