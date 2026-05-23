@@ -6,7 +6,7 @@ const Footer = () => (
         <p className="text-slate-500 max-w-sm text-sm">© 2024 LocalGigs. Hyperlocal Editorial Marketplace.</p>
       </div>
       <div className="grid grid-cols-3 gap-8">
-        <FooterLinks title="Platform" links={['How it Works', 'Browse Gigs']} />
+        <FooterLinks title="Platform" links={['How it Works', 'Browse Talent']} />
         <FooterLinks title="Legal" links={['Terms', 'Privacy']} />
         <FooterLinks title="Help" links={['Contact', 'Businesses']} />
       </div>

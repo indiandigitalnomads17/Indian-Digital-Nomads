@@ -21,7 +21,7 @@ const Hero = () => (
     <div className="relative z-10 flex flex-col items-center text-center w-full max-w-4xl mx-auto mt-8">
         
         <h1 className="text-6xl md:text-8xl font-headline font-extrabold tracking-tight text-[#0B1C30] leading-[1.05] mb-8">
-          Hire Top Student <br className="hidden md:block" />
+          Find Top Student <br className="hidden md:block" />
           Talent{' '}
           <PointerHighlight 
             rectangleClassName="bg-[#2563EB] border-[#2563EB]"
@@ -76,7 +76,7 @@ const Hero = () => (
               hoverColor1="#2563EB"
               hoverColor2="#1d4ed8"
             >
-              Find Gigs
+              Find Jobs
             </AnimatedBtn1>
           </BorderGlow>
         </div>
