@@ -1,7 +1,6 @@
 import passport, { DoneCallback } from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import prisma from "./prisma"; 
-import { User as PrismaUser } from "@prisma/client";
 
 passport.use(
   new GoogleStrategy(
@@ -17,8 +16,13 @@ passport.use(
         const email = profile.emails?.[0].value;
         if (!email) return done(null, false, { message: "No email found" });
 
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        if (existingUser && existingUser.status !== "ACTIVE") {
+          return done(null, false, { message: `Login rejected: Account is ${existingUser.status.toLowerCase()}.` });
+        }
+
         const stateStr = req.query.state as string;
-        let assignedRole: "CLIENT" | "FREELANCER" = "CLIENT"; // Default to CLIENT if none chosen
+        let assignedRole: "CLIENT" | "FREELANCER" = "CLIENT"; 
         let roleChosen = false;
 
         if (stateStr) {
@@ -33,7 +37,6 @@ passport.use(
           }
         }
 
-        const existingUser = await prisma.user.findUnique({ where: { email } });
         const isNew = !existingUser;
 
         const user = await prisma.user.upsert({
@@ -49,16 +52,11 @@ passport.use(
           },
         });
 
-        // Store properties in req and session so they can be read in the callback route
         req.isNewUser = isNew;
         req.roleChosenByUser = roleChosen;
         if (req.session) {
           req.session.isNew = isNew;
           req.session.roleChosen = roleChosen;
-          console.log(`[Passport Strategy] Session ID: ${req.sessionID}`);
-          console.log(`[Passport Strategy] Saved to session & req: isNew=${isNew}, roleChosen=${roleChosen}`);
-        } else {
-          console.log(`[Passport Strategy] Saved to req (session undefined): isNew=${isNew}, roleChosen=${roleChosen}`);
         }
 
         return done(null, user);
@@ -74,7 +72,7 @@ passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser(async (id: string, done:  DoneCallback) => {
+passport.deserializeUser(async (id: string, done: DoneCallback) => {
   try {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return done(null, false);

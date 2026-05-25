@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
    * Optional: restrict access to a specific role.
    * If omitted, any authenticated user (CLIENT or FREELANCER) is allowed.
    */
-  requiredRole?: 'CLIENT' | 'FREELANCER';
+  requiredRole?: 'CLIENT' | 'FREELANCER' | 'ADMIN';
   /** Path to redirect unauthenticated users to. Defaults to "/auth". */
   redirectPath?: string;
 }

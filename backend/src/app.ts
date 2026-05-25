@@ -11,6 +11,7 @@ import skillRoutes from "./routes/skill.routes";
 import publicRoutes from "./routes/public.routes";
 import dashboardRoutes from "./routes/dashboard.route";
 import clientRoutes from "./routes/client.routes";
+import adminRoutes from "./routes/admin.routes";
 
 const pgSession = require("connect-pg-simple")(session);
 const app = express();
@@ -73,6 +74,7 @@ app.use("/api/auth/google", googleAuthRouter);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/freelancer", freelancerRoutes);
 app.use("/api/v1/client", clientRoutes);
+app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/", dashboardRoutes);
 app.use("/api/v1/skills", skillRoutes);
 app.use("/api/v1/public", publicRoutes);

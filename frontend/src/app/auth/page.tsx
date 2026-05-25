@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Role = 'CLIENT' | 'FREELANCER';
+type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN' | 'SUPPORT'; // Added ADMIN/SUPPORT to type safety matches
 
 interface FieldErrors {
   [field: string]: string;
@@ -39,7 +39,7 @@ function parseBackendError(err: any): { general: string; fields: FieldErrors } {
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [role, setRole] = useState<Role>('CLIENT');
+  const [role, setRole] = useState<'CLIENT' | 'FREELANCER'>('CLIENT'); // Maintained original hook role state type limits
   const [formData, setFormData] = useState({ email: '', password: '', fullName: '' });
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
@@ -75,12 +75,15 @@ export default function AuthPage() {
         : { email: formData.email, password: formData.password, fullName: formData.fullName, role };
 
       const response = await api.post(endpoint, payload);
-      const userRole: Role = response.data.user?.role;
+      const userRole: string = response.data.user?.role; // Read incoming role directly
 
       // 2. Refresh AuthContext so global state (authenticated, user) updates
       await refreshUser();
 
-      if (userRole === 'CLIENT') {
+      // ---> ADMIN & REDIRECTION CONTROLS INTERCEPTOR <---
+      if (userRole === 'ADMIN' || userRole === 'SUPPORT') {
+        router.push('/admin');
+      } else if (userRole === 'CLIENT') {
         router.push('/client');
       } else if (userRole === 'FREELANCER') {
         router.push('/freelancer');
@@ -152,7 +155,7 @@ export default function AuthPage() {
               Email Address
             </label>
             <input
-              type="email"
+              type="primary"
               placeholder="name@example.com"
               value={formData.email}
               className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${

@@ -14,6 +14,11 @@ model User {
   googleId             String?        @unique
   phoneNumber          String?
   role                 UserRole
+
+  status                AccountStatus       @default(ACTIVE)
+  kycLogs              KycLog[]            @relation("UserKycLogs")
+  adminKycActions      KycLog[]            @relation("AdminKycActions")
+
   isEmailVerified       Boolean        @default(false)
   isPhoneNumberVerified Boolean        @default(false)
   isVerified           Boolean        @default(false)
@@ -128,6 +133,8 @@ model Product {
   client          User           @relation("ClientProducts", fields: [clientId], references: [id], onDelete: Cascade)
   images          ProductImage[]
   transactions    Transaction[]
+  isDelisted      Boolean        @default(false)
+  delistReason    String?
 }
 
 model ProductImage {
@@ -187,6 +194,17 @@ model Transaction {
   job              Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
   productId        String?
   product          Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
+
+model KycLog {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation("UserKycLogs", fields: [userId], references: [id], onDelete: Cascade)
+  adminId     String
+  admin       User      @relation("AdminKycActions", fields: [adminId], references: [id], onDelete: Cascade)
+  status      KycStatus // APPROVED or REJECTED
+  notes       String?   // Copy of kycNotes explaining the decision
+  createdAt   DateTime  @default(now()) // Serves as the "verifiedAt" timestamp
 }
 
 model Session {
@@ -288,4 +306,10 @@ enum KycStatus {
   PENDING_REVIEW
   APPROVED
   REJECTED
+}
+
+enum AccountStatus {
+  ACTIVE
+  DEACTIVATED
+  SUSPENDED
 }

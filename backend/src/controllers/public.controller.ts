@@ -4,7 +4,7 @@ import prisma from "../config/prisma";
 
 export const getFreelancerPublicProfile = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;;
+    const id = req.params.id as string;
 
     if (!id) {
       return res.status(400).json({ error: "User ID is required" });
