@@ -1,12 +1,16 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.mailtrap.io",
-  port: parseInt(process.env.SMTP_PORT || "2525"),
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, 
   auth: {
-    user: process.env.SMTP_USER || "",
-    pass: process.env.SMTP_PASS || "",
+    user: 'indiandigitalnomads17@gmail.com',    
+    pass: process.env.GMAIL_APP_PASSWORD,       
   },
+  tls: {
+    rejectUnauthorized: true
+  }
 });
 
 interface EmailPayload {
