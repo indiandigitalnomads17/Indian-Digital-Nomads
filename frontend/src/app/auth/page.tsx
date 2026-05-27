@@ -1,12 +1,13 @@
 "use client";
-import React, { useState, useEffect } from 'react'; // 1. Added useEffect
-import { useAuthContext } from '@/context/AuthContext';
-import api from '@/lib/api';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import { useAuthContext } from "@/context/AuthContext";
+import api from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN' | 'SUPPORT';
+
+type Role = "CLIENT" | "FREELANCER" | "ADMIN" | "SUPPORT"; // Added ADMIN/SUPPORT to type safety matches
 
 interface FieldErrors {
   [field: string]: string;
@@ -14,27 +15,37 @@ interface FieldErrors {
 
 function parseBackendError(err: any): { general: string; fields: FieldErrors } {
   const data = err?.response?.data;
-  if (!data) return { general: 'Network error. Is the server running?', fields: {} };
+  if (!data)
+    return { general: "Network error. Is the server running?", fields: {} };
 
   if (Array.isArray(data.errors)) {
     const fields: FieldErrors = {};
     data.errors.forEach((e: { field: string | number; message: string }) => {
       fields[String(e.field)] = e.message;
     });
-    return { general: 'Please fix the errors below.', fields };
+    return { general: "Please fix the errors below.", fields };
   }
 
   if (data.error) return { general: data.error, fields: {} };
-  return { general: data.message || 'Something went wrong. Please try again.', fields: {} };
+
+  // Fallback
+  return {
+    general: data.message || "Something went wrong. Please try again.",
+    fields: {},
+  };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [role, setRole] = useState<'CLIENT' | 'FREELANCER'>('CLIENT');
-  const [formData, setFormData] = useState({ email: '', password: '', fullName: '' });
+  const [role, setRole] = useState<"CLIENT" | "FREELANCER">("CLIENT"); // Maintained original hook role state type limits
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [generalError, setGeneralError] = useState('');
+  const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   
   // 2. Destructure 'user' and 'loading' from your AuthContext
@@ -64,7 +75,7 @@ export default function AuthPage() {
   };
 
   const clearErrors = () => {
-    setGeneralError('');
+    setGeneralError("");
     setFieldErrors({});
   };
 
@@ -73,12 +84,17 @@ export default function AuthPage() {
     clearErrors();
     setLoading(true);
 
-    const endpoint = isLogin ? '/api/v1/user/login' : '/api/v1/user/signup';
+    const endpoint = isLogin ? "/api/v1/user/login" : "/api/v1/user/signup";
 
     try {
       const payload = isLogin
         ? { email: formData.email, password: formData.password }
-        : { email: formData.email, password: formData.password, fullName: formData.fullName, role };
+        : {
+            email: formData.email,
+            password: formData.password,
+            fullName: formData.fullName,
+            role,
+          };
 
       const response = await api.post(endpoint, payload);
       const userRole: Role = response.data.user?.role; 
@@ -87,16 +103,17 @@ export default function AuthPage() {
         await refreshUser();
       }
 
-      if (userRole === 'ADMIN' || userRole === 'SUPPORT') {
-        router.replace('/admin');
-      } else if (userRole === 'CLIENT') {
-        router.replace('/client');
-      } else if (userRole === 'FREELANCER') {
-        router.replace('/freelancer');
+      // ---> ADMIN & REDIRECTION CONTROLS INTERCEPTOR <---
+      if (userRole === "ADMIN" || userRole === "SUPPORT") {
+        router.push("/admin");
+      } else if (userRole === "CLIENT") {
+        router.push("/client");
+      } else if (userRole === "FREELANCER") {
+        router.push("/freelancer");
       } else {
-        router.replace(role === 'CLIENT' ? '/client' : '/freelancer');
+        // Fallback to state role if backend doesn't provide it
+        router.push(role === "CLIENT" ? "/client" : "/freelancer");
       }
-
     } catch (err: any) {
       const { general, fields } = parseBackendError(err);
       setGeneralError(general);
@@ -109,7 +126,7 @@ export default function AuthPage() {
   const switchMode = () => {
     setIsLogin(!isLogin);
     clearErrors();
-    setFormData({ email: '', password: '', fullName: '' });
+    setFormData({ email: "", password: "", fullName: "" });
   };
 
   // 4. Prevent a brief UI layout flash of the form while determining if the user is authenticated
@@ -124,12 +141,13 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-outline-variant/10">
-
         {/* Header */}
         <div className="text-center mb-8">
-          <span className="text-3xl font-black text-blue-700 tracking-tighter">LocalGigs</span>
+          <span className="text-3xl font-black text-blue-700 tracking-tighter">
+            LocalGigs
+          </span>
           <h2 className="text-xl font-bold mt-4 font-headline">
-            {isLogin ? 'Welcome Back' : 'Join the Neighborhood'}
+            {isLogin ? "Welcome Back" : "Join the Neighborhood"}
           </h2>
         </div>
 
@@ -152,13 +170,17 @@ export default function AuthPage() {
                 placeholder="John Doe"
                 value={formData.fullName}
                 className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
-                  fieldErrors.fullName ? 'border-red-400' : 'border-transparent'
+                  fieldErrors.fullName ? "border-red-400" : "border-transparent"
                 }`}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
                 required
               />
               {fieldErrors.fullName && (
-                <p className="mt-1 text-xs text-red-500">{fieldErrors.fullName}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {fieldErrors.fullName}
+                </p>
               )}
             </div>
           )}
@@ -173,9 +195,11 @@ export default function AuthPage() {
               placeholder="name@example.com"
               value={formData.email}
               className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
-                fieldErrors.email ? 'border-red-400' : 'border-transparent'
+                fieldErrors.email ? "border-red-400" : "border-transparent"
               }`}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
               required
             />
             {fieldErrors.email && (
@@ -193,15 +217,21 @@ export default function AuthPage() {
               placeholder="••••••••"
               value={formData.password}
               className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
-                fieldErrors.password ? 'border-red-400' : 'border-transparent'
+                fieldErrors.password ? "border-red-400" : "border-transparent"
               }`}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
               required
             />
             {fieldErrors.password ? (
-              <p className="mt-1 text-xs text-red-500">{fieldErrors.password}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {fieldErrors.password}
+              </p>
             ) : !isLogin ? (
-              <p className="mt-1 text-xs text-slate-400">Must be at least 8 characters</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Must be at least 8 characters
+              </p>
             ) : null}
           </div>
 
@@ -214,22 +244,22 @@ export default function AuthPage() {
               <div className="flex gap-4">
                 <button
                   type="button"
-                  onClick={() => setRole('CLIENT')}
+                  onClick={() => setRole("CLIENT")}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
-                    role === 'CLIENT'
-                      ? 'bg-primary text-white border-primary'
-                      : 'border-slate-200 text-slate-500'
+                    role === "CLIENT"
+                      ? "bg-primary text-white border-primary"
+                      : "border-slate-200 text-slate-500"
                   }`}
                 >
                   Hire Talent
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole('FREELANCER')}
+                  onClick={() => setRole("FREELANCER")}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
-                    role === 'FREELANCER'
-                      ? 'bg-secondary text-white border-secondary'
-                      : 'border-slate-200 text-slate-500'
+                    role === "FREELANCER"
+                      ? "bg-secondary text-white border-secondary"
+                      : "border-slate-200 text-slate-500"
                   }`}
                 >
                   Work Gigs
@@ -243,7 +273,7 @@ export default function AuthPage() {
             disabled={loading}
             className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
           >
-            {loading ? 'Processing...' : isLogin ? 'Login' : 'Create Account'}
+            {loading ? "Processing..." : isLogin ? "Login" : "Create Account"}
           </button>
         </form>
 
@@ -259,18 +289,22 @@ export default function AuthPage() {
           onClick={handleGoogleLogin}
           className="w-full py-3 flex items-center justify-center gap-3 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors"
         >
-          <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="google" />
+          <img
+            src="https://www.google.com/favicon.ico"
+            className="w-4 h-4"
+            alt="google"
+          />
           Continue with Google
         </button>
 
         {/* Switch mode */}
         <p className="text-center mt-8 text-sm text-slate-500">
-          {isLogin ? 'New to LocalGigs?' : 'Already have an account?'}
+          {isLogin ? "New to LocalGigs?" : "Already have an account?"}
           <button
             onClick={switchMode}
             className="ml-2 text-primary font-bold hover:underline"
           >
-            {isLogin ? 'Sign Up' : 'Login'}
+            {isLogin ? "Sign Up" : "Login"}
           </button>
         </p>
       </div>
