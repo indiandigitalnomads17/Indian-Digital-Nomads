@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -47,7 +47,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  
+
   // 2. Destructure 'user' and 'loading' from your AuthContext
   const { user, loading: authLoading, refreshUser } = useAuthContext();
   const router = useRouter();
@@ -56,12 +56,12 @@ export default function AuthPage() {
   useEffect(() => {
     if (!authLoading && user) {
       const userRole = user.role;
-      if (userRole === 'ADMIN' ) {
-        router.replace('/admin');
-      } else if (userRole === 'CLIENT') {
-        router.replace('/client');
-      } else if (userRole === 'FREELANCER') {
-        router.replace('/freelancer');
+      if (userRole === "ADMIN") {
+        router.replace("/admin");
+      } else if (userRole === "CLIENT") {
+        router.replace("/client");
+      } else if (userRole === "FREELANCER") {
+        router.replace("/freelancer");
       }
     }
   }, [user, authLoading, router]);
@@ -97,7 +97,7 @@ export default function AuthPage() {
           };
 
       const response = await api.post(endpoint, payload);
-      const userRole: Role = response.data.user?.role; 
+      const userRole: Role = response.data.user?.role;
 
       if (refreshUser) {
         await refreshUser();
@@ -191,7 +191,7 @@ export default function AuthPage() {
               Email Address
             </label>
             <input
-              type="email" 
+              type="email"
               placeholder="name@example.com"
               value={formData.email}
               className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
