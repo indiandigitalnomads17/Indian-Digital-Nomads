@@ -2,12 +2,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '@/lib/api';
 
-export type UserRole = 'CLIENT' | 'FREELANCER';
+// 1. Updated UserRole to include all system roles
+export type UserRole = 'CLIENT' | 'FREELANCER' | 'ADMIN' | 'SUPPORT';
 
 export interface AuthUser {
   id: string;
   email: string;
-  role: UserRole;
+  role: UserRole; // This will now accept any of the four roles
   fullName: string;
   [key: string]: unknown;
 }
@@ -68,9 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authenticated, logout, refreshUser: fetchProfile }}>
-      {children}
-    </AuthContext.Provider>
+    <div style={{ display: 'contents' }}>
+      <AuthContext.Provider value={{ user, loading, authenticated, logout, refreshUser: fetchProfile }}>
+        {children}
+      </AuthContext.Provider>
+    </div>
   );
 };
 
