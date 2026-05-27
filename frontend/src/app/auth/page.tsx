@@ -13,14 +13,11 @@ interface FieldErrors {
   [field: string]: string;
 }
 
-// ─── Helper: parse any backend error into a human-readable string ──────────────
-
 function parseBackendError(err: any): { general: string; fields: FieldErrors } {
   const data = err?.response?.data;
   if (!data)
     return { general: "Network error. Is the server running?", fields: {} };
 
-  // Zod validation errors: { success: false, errors: [{field, message}] }
   if (Array.isArray(data.errors)) {
     const fields: FieldErrors = {};
     data.errors.forEach((e: { field: string | number; message: string }) => {
@@ -29,7 +26,6 @@ function parseBackendError(err: any): { general: string; fields: FieldErrors } {
     return { general: "Please fix the errors below.", fields };
   }
 
-  // Simple backend error: { error: '...' }
   if (data.error) return { general: data.error, fields: {} };
 
   // Fallback
@@ -40,7 +36,6 @@ function parseBackendError(err: any): { general: string; fields: FieldErrors } {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState<"CLIENT" | "FREELANCER">("CLIENT"); // Maintained original hook role state type limits
@@ -52,8 +47,24 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const { refreshUser } = useAuthContext();
+  
+  // 2. Destructure 'user' and 'loading' from your AuthContext
+  const { user, loading: authLoading, refreshUser } = useAuthContext();
   const router = useRouter();
+
+  // 3. BACK BUTTON GUARD: Automatically forward logged-in users away from the login page
+  useEffect(() => {
+    if (!authLoading && user) {
+      const userRole = user.role;
+      if (userRole === 'ADMIN' ) {
+        router.replace('/admin');
+      } else if (userRole === 'CLIENT') {
+        router.replace('/client');
+      } else if (userRole === 'FREELANCER') {
+        router.replace('/freelancer');
+      }
+    }
+  }, [user, authLoading, router]);
 
   const handleGoogleLogin = () => {
     if (isLogin) {
@@ -86,10 +97,11 @@ export default function AuthPage() {
           };
 
       const response = await api.post(endpoint, payload);
-      const userRole: string = response.data.user?.role; // Read incoming role directly
+      const userRole: Role = response.data.user?.role; 
 
-      // 2. Refresh AuthContext so global state (authenticated, user) updates
-      await refreshUser();
+      if (refreshUser) {
+        await refreshUser();
+      }
 
       // ---> ADMIN & REDIRECTION CONTROLS INTERCEPTOR <---
       if (userRole === "ADMIN" || userRole === "SUPPORT") {
@@ -116,6 +128,15 @@ export default function AuthPage() {
     clearErrors();
     setFormData({ email: "", password: "", fullName: "" });
   };
+
+  // 4. Prevent a brief UI layout flash of the form while determining if the user is authenticated
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-6">
+        <p className="text-slate-500 font-medium">Loading session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-6">
@@ -170,7 +191,7 @@ export default function AuthPage() {
               Email Address
             </label>
             <input
-              type="primary"
+              type="email" 
               placeholder="name@example.com"
               value={formData.email}
               className={`w-full p-3 mt-1 bg-surface-container-low rounded-xl border focus:ring-2 focus:ring-primary outline-none ${
