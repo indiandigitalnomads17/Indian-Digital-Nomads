@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useId } from 'react';
+import React, { useId } from "react";
 
 interface AnimatedBtn1Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   color1?: string;
@@ -12,18 +12,24 @@ interface AnimatedBtn1Props extends React.ButtonHTMLAttributes<HTMLButtonElement
 export default function AnimatedBtn1({
   children,
   className,
-  color1 = '#212529',
-  color2 = '#343a40',
-  hoverColor1 = '#343a40',
-  hoverColor2 = '#495057',
+  color1 = "#212529",
+  color2 = "#343a40",
+  hoverColor1 = "#343a40",
+  hoverColor2 = "#495057",
   ...props
 }: AnimatedBtn1Props) {
-  const uniqueId = useId().replace(/:/g, '');
+  const uniqueId = useId().replace(/:/g, "");
   const btnClass = `bubbleeffectbtn-${uniqueId}`;
 
   return (
-    <button className={`${btnClass} ${className || ''}`} type="button" {...props}>
-      <style dangerouslySetInnerHTML={{ __html: `
+    <button
+      className={`${btnClass} ${className || ""}`}
+      type="button"
+      {...props}
+    >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .${btnClass} {
           min-width: 130px;
           height: 40px;
@@ -97,10 +103,12 @@ export default function AnimatedBtn1({
           position: relative;
           z-index: 2;
         }
-      `}} />
+      `,
+        }}
+      />
 
       <span className="text-sm font-medium w-full flex items-center justify-center">
-        {children || 'Hover me'}
+        {children || "Hover me"}
       </span>
     </button>
   );
