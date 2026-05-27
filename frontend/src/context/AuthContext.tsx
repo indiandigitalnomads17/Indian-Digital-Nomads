@@ -43,9 +43,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
       }
     } catch (err) {
+      console.error("[AuthContext] fetchProfile error:", err);
       setAuthenticated(false);
       setUser(null);
     } finally {
+      console.log("[AuthContext] fetchProfile finished, setting loading=false");
       setLoading(false);
     }
   };
@@ -67,6 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.location.href = '/';
     }
   };
+
+  console.log("[AuthContext] Render state ->", { loading, authenticated, hasUser: !!user });
 
   return (
     <div style={{ display: 'contents' }}>

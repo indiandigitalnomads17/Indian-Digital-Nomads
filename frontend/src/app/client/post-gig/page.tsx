@@ -62,6 +62,10 @@ const PostGig = () => {
   const timerRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
+  useEffect(() => {
+    console.log("[PostGig] Component mounted or state updated. isAnalyzingVideo:", isAnalyzingVideo, "isSubmitting:", isSubmitting, "detecting:", detecting);
+  });
+
   // Fetch standard 4-tier skill tree configuration on mount
   useEffect(() => {
     api.get('/api/v1/skills/tree')

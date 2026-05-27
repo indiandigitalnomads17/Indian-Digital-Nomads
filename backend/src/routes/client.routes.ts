@@ -15,7 +15,8 @@ router.patch(
   authorize("CLIENT"),
   upload.fields([
     { name: "companyLogo", maxCount: 1 },
-    { name: "businessVideo", maxCount: 1 }
+    { name: "businessVideo", maxCount: 1 },
+    { name: "banner", maxCount: 1 }
   ]),
   onboardClient
 );

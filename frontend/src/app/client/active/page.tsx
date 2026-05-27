@@ -2,9 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
-import { Button } from '@/components/base/buttons/button';
-import { Avatar } from '@/components/base/avatar/avatar';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Plus, ListTodo, Megaphone, Clock, CheckCircle2, Briefcase, AlertTriangle, Users, ChevronDown, ChevronUp, MapPin, DollarSign } from 'lucide-react';
 import api from '@/lib/api';
+import { LoadingIndicator } from '@/components/application/loading-indicator/loading-indicator';
 
 interface Skill {
   id: string;
@@ -59,7 +65,7 @@ export default function ActiveGigsPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Tab states for filter
-  const [activeTab, setActiveTab] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'>('ALL');
+  const [activeTab, setActiveTab] = useState<string>('ALL');
   
   // For managing inline proposal viewing
   const [expandedGigId, setExpandedGigId] = useState<string | null>(null);
@@ -122,7 +128,6 @@ export default function ActiveGigsPage() {
       setActionLoading(proposalId);
       const res = await api.patch(`/api/v1/client/proposals/${proposalId}`, { status });
       if (res.data.success) {
-        // Refresh gig listings and clear local proposals cache for this gig to force reload
         await fetchGigs();
         setProposals(prev => {
           const updated = { ...prev };
@@ -138,13 +143,11 @@ export default function ActiveGigsPage() {
     }
   };
 
-  // Filtered Gigs list
   const filteredGigs = gigs.filter(gig => {
     if (activeTab === 'ALL') return true;
     return gig.status === activeTab;
   });
 
-  // Gigs count metrics
   const totalCount = gigs.length;
   const openCount = gigs.filter(g => g.status === 'OPEN').length;
   const inProgressCount = gigs.filter(g => g.status === 'IN_PROGRESS').length;
@@ -157,320 +160,320 @@ export default function ActiveGigsPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto flex flex-col gap-8 pb-8 pt-4">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Active Gigs & Projects</h1>
-            <p className="text-slate-500 font-medium mt-1">Manage your job listings, hire digital nomads, and track running contracts.</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-bold tracking-tight">Active Gigs & Projects</h1>
+            <p className="text-muted-foreground">Manage your job listings, hire digital nomads, and track running contracts.</p>
           </div>
           <Button 
-            color="primary" 
             onClick={() => router.push('/client/post-gig')}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl shadow-lg shadow-blue-500/10"
+            size="lg"
           >
-            <span className="material-symbols-outlined text-lg">add</span>
+            <Plus className="mr-2 size-5" />
             Post New Gig
           </Button>
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Postings', count: totalCount, icon: 'list_alt', color: 'text-slate-600 bg-slate-50 border-slate-100' },
-            { label: 'Open Gigs', count: openCount, icon: 'campaign', color: 'text-blue-600 bg-blue-50/50 border-blue-100' },
-            { label: 'In Progress', count: inProgressCount, icon: 'clock_loader_10', color: 'text-amber-600 bg-amber-50/50 border-amber-100' },
-            { label: 'Completed Gigs', count: completedCount, icon: 'check_circle', color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100' }
-          ].map((item, idx) => (
-            <div key={idx} className={`p-5 rounded-2xl border bg-white flex items-center justify-between shadow-sm`}>
-              <div>
-                <span className="text-xs font-black uppercase text-slate-400 tracking-widest">{item.label}</span>
-                <h3 className="text-3xl font-black text-slate-900 mt-1">{item.count}</h3>
-              </div>
-              <span className={`material-symbols-outlined p-3 rounded-xl border ${item.color} text-2xl`}>
-                {item.icon}
-              </span>
-            </div>
-          ))}
-        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Postings</CardTitle>
+              <ListTodo className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{totalCount}</div>
+            </CardContent>
+          </Card>
 
-        {/* Tab Filters */}
-        <div className="flex gap-2 border-b border-slate-100 mb-6 overflow-x-auto pb-px">
-          {[
-            { id: 'ALL', label: 'All Postings' },
-            { id: 'OPEN', label: 'Open Opportunities' },
-            { id: 'IN_PROGRESS', label: 'In Progress' },
-            { id: 'COMPLETED', label: 'Completed' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id as any);
-                setExpandedGigId(null);
-              }}
-              className={`px-4 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tab.id 
-                  ? 'border-blue-600 text-blue-600 font-black' 
-                  : 'border-transparent text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          <Card className="shadow-sm bg-primary/5 border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-semibold text-primary uppercase tracking-wider">Open Gigs</CardTitle>
+              <Megaphone className="size-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">{openCount}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm bg-amber-500/5 border-amber-500/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-semibold text-amber-600 uppercase tracking-wider">In Progress</CardTitle>
+              <Clock className="size-4 text-amber-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-amber-600">{inProgressCount}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm bg-emerald-500/5 border-emerald-500/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Completed</CardTitle>
+              <CheckCircle2 className="size-4 text-emerald-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-emerald-600">{completedCount}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Content Section */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-            <span className="material-symbols-outlined animate-spin text-4xl text-blue-600">rotate_right</span>
-            <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mt-4">Compiling gig dashboard data...</p>
+          <div className="flex flex-col items-center justify-center min-h-[40vh]">
+            <LoadingIndicator type="line-spinner" size="md" label="Compiling gig dashboard data..." />
           </div>
         ) : error ? (
-          <div className="p-6 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4">
-            <span className="material-symbols-outlined text-red-600 text-2xl">error</span>
-            <div>
-              <h3 className="font-bold text-red-900">Unable to load Gig data</h3>
-              <p className="text-sm text-red-600 mt-0.5">{error}</p>
-              <Button color="primary-destructive" size="sm" onClick={fetchGigs} className="mt-3">Retry Request</Button>
+          <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 bg-destructive/5 rounded-xl border border-destructive/20 p-8">
+            <AlertTriangle className="size-10 text-destructive" />
+            <div className="text-center">
+              <h3 className="font-bold text-lg text-destructive">Unable to load Gig data</h3>
+              <p className="text-sm text-destructive/80 mt-1">{error}</p>
             </div>
-          </div>
-        ) : filteredGigs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-            <span className="material-symbols-outlined text-5xl text-slate-300">work_outline</span>
-            <h3 className="text-lg font-black text-slate-900 mt-4 tracking-tight">No Gigs Found</h3>
-            <p className="text-slate-500 text-sm max-w-sm mx-auto mt-1">There are no gig posts in this category matching your selection.</p>
-            <Button 
-              color="tertiary" 
-              onClick={() => router.push('/client/post-gig')}
-              className="mt-6"
-            >
-              Post a New Opportunity
-            </Button>
+            <Button variant="destructive" onClick={fetchGigs}>Retry Request</Button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredGigs.map(gig => {
-              const isOpen = gig.status === 'OPEN';
-              const isInProgress = gig.status === 'IN_PROGRESS';
-              const isCompleted = gig.status === 'COMPLETED';
-              const isCancelled = gig.status === 'CANCELLED';
-              const isExpanded = expandedGigId === gig.id;
-              
-              let statusBadge = (
-                <span className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm">
-                  Open Gigs
-                </span>
-              );
-              if (isInProgress) {
-                statusBadge = (
-                  <span className="px-3 py-1 bg-amber-50 text-amber-600 border border-amber-100 text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm">
-                    In Progress
-                  </span>
-                );
-              } else if (isCompleted) {
-                statusBadge = (
-                  <span className="px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm">
-                    Completed
-                  </span>
-                );
-              } else if (isCancelled) {
-                statusBadge = (
-                  <span className="px-3 py-1 bg-rose-50 text-rose-600 border border-rose-100 text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm">
-                    Cancelled
-                  </span>
-                );
-              }
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setExpandedGigId(null); }} className="w-full flex flex-col">
+            <TabsList className="w-full flex flex-row items-center justify-start border-b rounded-none h-auto p-0 bg-transparent mb-6">
+              {[
+                { id: 'ALL', label: 'All Postings' },
+                { id: 'OPEN', label: 'Open Opportunities' },
+                { id: 'IN_PROGRESS', label: 'In Progress' },
+                { id: 'COMPLETED', label: 'Completed' }
+              ].map(tab => (
+                <TabsTrigger 
+                  key={tab.id}
+                  value={tab.id}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-semibold text-muted-foreground data-[state=active]:text-primary transition-all flex-none h-auto"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-              return (
-                <div key={gig.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-                  {/* Gig Header Info */}
-                  <div className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2.5 mb-2">
-                          {statusBadge}
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                            Posted {new Date(gig.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <h2 className="text-xl font-black text-slate-900 tracking-tight">{gig.title}</h2>
-                        <p className="text-slate-500 text-sm mt-2 line-clamp-3 leading-relaxed">{gig.description}</p>
-                        
-                        {/* Skills required tags */}
-                        {gig.skillsRequired && gig.skillsRequired.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-4">
-                            {gig.skillsRequired.map(skill => (
-                              <span key={skill.id} className="px-2 py-1 bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 rounded-md">
-                                {skill.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+            <TabsContent value={activeTab} className="mt-0 outline-none">
+              {filteredGigs.length === 0 ? (
+                <Card className="flex flex-col items-center justify-center py-20 text-center shadow-none bg-muted/30 border-dashed">
+                  <Briefcase className="size-12 text-muted-foreground mb-4 opacity-50" />
+                  <CardTitle className="text-xl mb-2">No Gigs Found</CardTitle>
+                  <CardDescription>There are no gig posts in this category matching your selection.</CardDescription>
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push('/client/post-gig')}
+                    className="mt-6"
+                  >
+                    Post a New Opportunity
+                  </Button>
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {filteredGigs.map(gig => {
+                    const isOpen = gig.status === 'OPEN';
+                    const isInProgress = gig.status === 'IN_PROGRESS';
+                    const isCompleted = gig.status === 'COMPLETED';
+                    const isCancelled = gig.status === 'CANCELLED';
+                    const isExpanded = expandedGigId === gig.id;
+                    
+                    let statusBadge = (
+                      <Badge variant="default" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">Open Gigs</Badge>
+                    );
+                    if (isInProgress) {
+                      statusBadge = <Badge variant="default" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">In Progress</Badge>;
+                    } else if (isCompleted) {
+                      statusBadge = <Badge variant="default" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">Completed</Badge>;
+                    } else if (isCancelled) {
+                      statusBadge = <Badge variant="destructive" className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20">Cancelled</Badge>;
+                    }
 
-                      {/* Side info columns */}
-                      <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-4 shrink-0 border-t border-slate-50 md:border-t-0 pt-4 md:pt-0">
-                        <div className="text-left md:text-right">
-                          <p className="text-2xl font-black text-slate-900">
-                            {gig.budget ? `₹${Number(gig.budget).toLocaleString()}` : 'Flexible'}
-                          </p>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                            {gig.type === 'HOURLY' ? 'Hourly billing' : 'Fixed milestones'}
-                          </p>
-                        </div>
-
-                        {gig.estimatedHours && (
-                          <div className="text-left md:text-right">
-                            <span className="inline-flex items-center gap-1 text-slate-600 text-xs font-bold bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                              <span className="material-symbols-outlined text-[14px]">schedule</span>
-                              {gig.estimatedHours} hrs est.
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Gig Actions Panel */}
-                    <div className="border-t border-slate-50 mt-6 pt-4 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                      
-                      {/* Left: display nomad information if hired */}
-                      <div>
-                        {gig.freelancer ? (
-                          <div className="flex items-center gap-3 bg-slate-50/50 hover:bg-slate-50 p-2.5 rounded-2xl border border-slate-100/50 transition-all">
-                            <Avatar 
-                              src={gig.freelancer.profile?.profilePicLink || ''} 
-                              alt={gig.freelancer.fullName} 
-                              initials={getInitials(gig.freelancer.fullName)}
-                              size="sm" 
-                              className="border border-slate-200" 
-                            />
-                            <div>
-                              <p className="text-xs font-black text-slate-900">Hired Nomad Professional</p>
-                              <p className="text-[11px] font-medium text-slate-500">{gig.freelancer.fullName}</p>
-                            </div>
-                          </div>
-                        ) : isOpen ? (
-                          <span className="text-xs font-bold text-slate-400 inline-flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-sm">group</span>
-                            {gig._count.proposals} applicant proposals received
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold text-slate-400">No professional hired</span>
-                        )}
-                      </div>
-
-                      {/* Right: Expand proposals action or status indicators */}
-                      <div className="flex items-center gap-2 justify-end">
-                        {isOpen && (
-                          <Button
-                            color={isExpanded ? "tertiary" : "primary"}
-                            onClick={() => fetchProposalsForGig(gig.id)}
-                            className="flex items-center gap-2"
-                            isDisabled={loadingProposals === gig.id}
-                          >
-                            <span className="material-symbols-outlined text-lg">
-                              {loadingProposals === gig.id ? 'sync' : isExpanded ? 'expand_less' : 'expand_more'}
-                            </span>
-                            {isExpanded ? 'Hide Proposals' : `Review Proposals (${gig._count.proposals})`}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expandable Proposals List for Gigs in OPEN status */}
-                  {isExpanded && isOpen && (
-                    <div className="bg-slate-50 border-t border-slate-100 p-6 space-y-4">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">
-                        Applicant Gigs Proposals
-                      </h3>
-
-                      {!proposals[gig.id] || proposals[gig.id].length === 0 ? (
-                        <div className="text-center py-8 bg-white border border-slate-100 rounded-2xl text-slate-400 text-xs font-bold uppercase tracking-wider">
-                          No applications have been sent for this gig yet.
-                        </div>
-                      ) : (
-                        proposals[gig.id].map(proposal => (
-                          <div key={proposal.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start gap-4 hover:border-blue-200 transition-all">
-                            <div className="space-y-3 flex-1">
-                              {/* Freelancer Header */}
-                              <div className="flex items-start gap-3">
-                                <Avatar 
-                                  src={proposal.freelancer.profile?.profilePicLink || ''} 
-                                  alt={proposal.freelancer.fullName} 
-                                  initials={getInitials(proposal.freelancer.fullName)}
-                                  size="md" 
-                                />
-                                <div>
-                                  <h4 className="font-black text-slate-900 text-sm tracking-tight">
-                                    {proposal.freelancer.fullName}
-                                  </h4>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                    {proposal.freelancer.profile?.location || 'Remote'}
-                                  </p>
-                                </div>
+                    return (
+                      <Card key={gig.id} className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'shadow-md border-primary/30' : 'shadow-sm hover:border-primary/20'}`}>
+                        <div className="p-6">
+                          <div className="flex flex-col md:flex-row justify-between gap-6">
+                            <div className="flex-1 flex flex-col gap-3">
+                              <div className="flex items-center gap-3">
+                                {statusBadge}
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Posted {new Date(gig.createdAt).toLocaleDateString()}
+                                </span>
                               </div>
-
-                              {/* Cover Letter */}
-                              <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50">
-                                <p className="text-xs text-slate-600 font-medium whitespace-pre-line leading-relaxed">
-                                  {proposal.coverLetter}
-                                </p>
-                              </div>
-
-                              {/* Skills */}
-                              {proposal.freelancer.profile?.skills && proposal.freelancer.profile.skills.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {proposal.freelancer.profile.skills.map((s, i) => (
-                                    <span key={i} className="px-2 py-0.5 bg-slate-50 text-[9px] font-bold text-slate-500 rounded border border-slate-100">
-                                      {s.name}
-                                    </span>
+                              <h2 className="text-xl font-bold tracking-tight">{gig.title}</h2>
+                              <p className="text-muted-foreground text-sm line-clamp-3 leading-relaxed">{gig.description}</p>
+                              
+                              {gig.skillsRequired && gig.skillsRequired.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {gig.skillsRequired.map(skill => (
+                                    <Badge key={skill.id} variant="secondary" className="font-normal text-xs">
+                                      {skill.name}
+                                    </Badge>
                                   ))}
                                 </div>
                               )}
                             </div>
 
-                            {/* Offer metrics and Hiring Buttons */}
-                            <div className="w-full md:w-auto flex md:flex-col justify-between md:justify-start items-center md:items-end gap-4 shrink-0 pt-4 md:pt-0 border-t border-slate-50 md:border-t-0">
-                              <div className="text-left md:text-right">
-                                <p className="text-lg font-black text-blue-600">
-                                  ₹{Number(proposal.bidAmount).toLocaleString()}
+                            {/* Side info columns */}
+                            <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-4 shrink-0 md:pl-6 md:border-l">
+                              <div className="text-left md:text-right flex flex-col gap-1">
+                                <p className="text-2xl font-bold flex items-center md:justify-end gap-1">
+                                  {gig.budget ? `₹${Number(gig.budget).toLocaleString()}` : 'Flexible'}
                                 </p>
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                                  Bid Amount / {proposal.estimatedDays ? `${proposal.estimatedDays} days est.` : 'flexible timeline'}
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {gig.type === 'HOURLY' ? 'Hourly billing' : 'Fixed milestones'}
                                 </p>
                               </div>
 
-                              <div className="flex gap-2">
-                                <Button 
-                                  color="primary-destructive" 
-                                  size="sm" 
-                                  onClick={() => handleProposalAction(proposal.id, gig.id, 'REJECTED')}
-                                  isDisabled={actionLoading !== null}
-                                >
-                                  Decline
-                                </Button>
-                                <Button 
-                                  color="primary" 
-                                  size="sm"
-                                  onClick={() => handleProposalAction(proposal.id, gig.id, 'ACCEPTED')}
-                                  isDisabled={actionLoading !== null}
-                                  className="shadow-sm shadow-blue-500/10"
-                                >
-                                  {actionLoading === proposal.id ? 'Hiring...' : 'Hire Nomad'}
-                                </Button>
-                              </div>
+                              {gig.estimatedHours && (
+                                <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 font-medium">
+                                  <Clock className="size-3 mr-1" />
+                                  {gig.estimatedHours} hrs est.
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+
+                          <Separator className="my-6" />
+
+                          {/* Gig Actions Panel */}
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            
+                            {/* Left: display nomad information if hired */}
+                            <div className="flex items-center">
+                              {gig.freelancer ? (
+                                <div className="flex items-center gap-3 bg-muted/50 py-2 px-4 rounded-full border border-border/50">
+                                  <Avatar className="size-8 border border-background">
+                                    <AvatarImage src={gig.freelancer.profile?.profilePicLink || ''} />
+                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">{getInitials(gig.freelancer.fullName)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex flex-col">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Hired Nomad</p>
+                                    <p className="text-xs font-bold">{gig.freelancer.fullName}</p>
+                                  </div>
+                                </div>
+                              ) : isOpen ? (
+                                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                  <Users className="size-4" />
+                                  <span>{gig._count.proposals} applicant proposals received</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium text-muted-foreground">No professional hired</span>
+                              )}
+                            </div>
+
+                            {/* Right: Expand proposals action */}
+                            {isOpen && (
+                              <Button
+                                variant={isExpanded ? "secondary" : "default"}
+                                onClick={() => fetchProposalsForGig(gig.id)}
+                                disabled={loadingProposals === gig.id}
+                                className="w-full md:w-auto"
+                              >
+                                {loadingProposals === gig.id ? (
+                                  <LoadingIndicator type="line-spinner" size="sm" className="mr-2" />
+                                ) : isExpanded ? (
+                                  <ChevronUp className="mr-2 size-4" />
+                                ) : (
+                                  <ChevronDown className="mr-2 size-4" />
+                                )}
+                                {isExpanded ? 'Hide Proposals' : `Review Proposals (${gig._count.proposals})`}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expandable Proposals List for Gigs in OPEN status */}
+                        {isExpanded && isOpen && (
+                          <div className="bg-muted/30 border-t p-6">
+                            <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-6 flex items-center gap-2">
+                              <Users className="size-4" /> Applicant Proposals
+                            </h3>
+
+                            {!proposals[gig.id] || proposals[gig.id].length === 0 ? (
+                              <div className="text-center py-8 bg-background border rounded-xl text-muted-foreground text-sm font-medium">
+                                No applications have been sent for this gig yet.
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-4">
+                                {proposals[gig.id].map(proposal => (
+                                  <Card key={proposal.id} className="shadow-sm hover:border-primary/30 transition-colors">
+                                    <CardContent className="p-5 flex flex-col md:flex-row justify-between gap-6">
+                                      <div className="flex-1 flex flex-col gap-4">
+                                        {/* Freelancer Header */}
+                                        <div className="flex items-start gap-3">
+                                          <Avatar className="size-10 border border-background">
+                                            <AvatarImage src={proposal.freelancer.profile?.profilePicLink || ''} />
+                                            <AvatarFallback className="bg-primary/10 text-primary font-bold">{getInitials(proposal.freelancer.fullName)}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex flex-col">
+                                            <h4 className="font-bold text-base tracking-tight">{proposal.freelancer.fullName}</h4>
+                                            <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                                              <MapPin className="size-3" /> {proposal.freelancer.profile?.location || 'Remote'}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {/* Cover Letter */}
+                                        <div className="bg-muted/50 p-4 rounded-xl border border-border/50 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+                                          {proposal.coverLetter}
+                                        </div>
+
+                                        {/* Skills */}
+                                        {proposal.freelancer.profile?.skills && proposal.freelancer.profile.skills.length > 0 && (
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {proposal.freelancer.profile.skills.map((s, i) => (
+                                              <Badge key={i} variant="outline" className="text-[10px] font-semibold text-muted-foreground">
+                                                {s.name}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Offer metrics and Hiring Buttons */}
+                                      <div className="w-full md:w-auto flex md:flex-col justify-between md:justify-start items-center md:items-end gap-4 shrink-0 md:pl-6 md:border-l">
+                                        <div className="text-left md:text-right flex flex-col gap-1">
+                                          <p className="text-xl font-bold text-primary flex items-center md:justify-end gap-1">
+                                            ₹{Number(proposal.bidAmount).toLocaleString()}
+                                          </p>
+                                          <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+                                            {proposal.estimatedDays ? `${proposal.estimatedDays} days est.` : 'flexible timeline'}
+                                          </p>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                          <Button 
+                                            variant="destructive"
+                                            size="sm" 
+                                            onClick={() => handleProposalAction(proposal.id, gig.id, 'REJECTED')}
+                                            disabled={actionLoading !== null}
+                                          >
+                                            Decline
+                                          </Button>
+                                          <Button 
+                                            variant="default"
+                                            size="sm"
+                                            onClick={() => handleProposalAction(proposal.id, gig.id, 'ACCEPTED')}
+                                            disabled={actionLoading !== null}
+                                          >
+                                            {actionLoading === proposal.id ? <LoadingIndicator type="line-spinner" size="sm" className="mr-2" /> : null}
+                                            {actionLoading === proposal.id ? 'Hiring...' : 'Hire Nomad'}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </DashboardLayout>

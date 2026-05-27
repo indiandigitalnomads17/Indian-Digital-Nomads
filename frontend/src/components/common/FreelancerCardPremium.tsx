@@ -3,7 +3,7 @@
 import React from "react";
 import { Star01, MarkerPin01, MessageChatSquare, Bookmark } from "@untitledui/icons";
 import { Avatar } from "@/components/base/avatar/avatar";
-import { Badge } from "@/components/base/badges/badges";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 
@@ -32,9 +32,9 @@ export const FreelancerCardPremium = ({ data }: FreelancerCardProps) => {
                     border
                     className="mb-4"
                 />
-                <Badge color="brand" size="sm" type="pill-color" className="mt-1">
+                <BadgeWithDot color="brand" size="sm" type="pill-color" className="mt-1">
                     {match} Match
-                </Badge>
+                </BadgeWithDot>
             </div>
 
             <div className="flex flex-col gap-1">

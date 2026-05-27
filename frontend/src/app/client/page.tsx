@@ -2,12 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { StatCardPremium } from '../../components/common/StatCardPremium';
-import { FreelancerCardPremium } from '../../components/common/FreelancerCardPremium';
-import { Button } from '@/components/base/buttons/button';
-import { Plus, Users01, ShieldTick } from '@untitledui/icons';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { ShieldCheck, Users, Briefcase, FileText, CheckCircle2, XCircle, Package, DollarSign, Star } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { LoadingIndicator } from '@/components/application/loading-indicator/loading-indicator';
 
 interface Freelancer {
   fullName: string;
@@ -29,6 +32,7 @@ interface AccountStats {
   location: string | null;
   bio?: string | null;
   phoneNumber?: string | null;
+  bannerLink?: string | null;
 }
 
 interface Financials {
@@ -67,7 +71,7 @@ const BusinessDashboard = () => {
 
       if (profileRes.data.success) {
         const { account, activeGigs, totalHired, pendingProposals, completedGigs, cancelledGigs, totalProducts, financials } = profileRes.data.data;
-        
+
         setAccount(account);
         setStats({
           activeGigs,
@@ -97,138 +101,205 @@ const BusinessDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  const formatFreelancerData = (freelancer: Freelancer) => {
-    return {
-      name: freelancer.fullName,
-      role: freelancer.profile?.preferredJobType || "Professional",
-      match: freelancer.matchPercent + "%",
-      rating: "4.9",
-      dist: "Nearby",
-      img: freelancer.profile?.profilePicLink || "https://res.cloudinary.com/dmv76qdpx/image/upload/v1713727931/default-avatar_vqc9tw.png"
-    };
-  };
-
-  if (loading) return <div className="p-20 text-center font-black animate-pulse">Initializing Business Dashboard...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <LoadingIndicator type="line-spinner" size="md" label="Initializing Business Dashboard..." />
+      </div>
+    </DashboardLayout>
+  );
 
   if (needsOnboarding) {
     return (
       <DashboardLayout>
-         <div className="max-w-xl mx-auto mt-20 text-center space-y-8 bg-white p-12 rounded-[40px] shadow-2xl shadow-blue-500/10 border border-slate-50">
-            <div className="w-24 h-24 bg-blue-600 rounded-[30px] flex items-center justify-center text-white mx-auto shadow-xl shadow-blue-500/40">
-               <span className="material-symbols-outlined text-5xl">domain</span>
+        <Card className="max-w-xl mx-auto mt-20 text-center shadow-lg">
+          <CardHeader className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+              <Briefcase className="size-10" />
             </div>
-            <div>
-               <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Welcome, {user?.fullName}!</h1>
-               <p className="text-slate-500 font-semibold leading-relaxed">Before you can start hiring local expert nomads, we need to set up your business profile.</p>
-            </div>
-            <button 
+            <CardTitle className="text-3xl">Welcome, {user?.fullName}!</CardTitle>
+            <CardDescription className="text-base">
+              Before you can start hiring local expert nomads, we need to set up your business profile.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              size="lg" 
+              className="w-full"
               onClick={() => router.push('/client/profile')}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 active:scale-95 transition-all shadow-xl shadow-slate-200"
             >
-               Set Up Business Profile
-            </button>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-50">Takes less than 2 minutes</p>
-         </div>
+              Set Up Business Profile
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4 uppercase tracking-widest font-medium">
+              Takes less than 2 minutes
+            </p>
+          </CardContent>
+        </Card>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <header className="mb-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tighter mb-2 font-headline flex items-center gap-3">
-            Hello, {account?.fullName || user?.fullName || 'Business Owner'}
-            {account?.isVerified && (
-              <ShieldTick className="size-7 text-blue-600 fill-blue-50" />
-            )}
-          </h1>
-          <p className="text-slate-500 text-sm font-medium">Manage corporate tasks and match local freelancers.</p>
+      <div className="flex flex-col gap-8 pb-8">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              Hello, {account?.fullName || user?.fullName || 'Business Owner'}
+              {account?.isVerified && (
+                <ShieldCheck className="size-6 text-primary" />
+              )}
+            </h1>
+            <p className="text-muted-foreground">Manage corporate tasks and match local freelancers.</p>
+          </div>
+
+          {account && (
+            <Card className="flex items-center gap-4 px-4 py-3 min-w-[200px] shadow-sm">
+              <div className="flex size-10 rounded-lg bg-primary text-primary-foreground items-center justify-center font-bold">
+                N⚡
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Nomad Score</span>
+                <span className="text-xl font-bold leading-none">
+                  {account.nomadScore} <span className="text-sm font-medium text-muted-foreground">/ 100</span>
+                </span>
+              </div>
+            </Card>
+          )}
+        </header>
+
+        {/* Bento Grid Layer */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Projects</CardTitle>
+              <Briefcase className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeGigs}</div>
+              <p className="text-xs text-muted-foreground mt-1">Active Gigs</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Hired</CardTitle>
+              <Users className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalHired}</div>
+              <p className="text-xs text-muted-foreground mt-1">Freelancers</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm bg-primary text-primary-foreground border-primary">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-primary-foreground/80 uppercase tracking-wider">Review Required</CardTitle>
+              <FileText className="size-4 text-primary-foreground/80" />
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="text-2xl font-bold">{stats.pendingProposals} Pending Proposals</div>
+              <Button variant="secondary" size="sm" className="w-fit text-primary">
+                Review Now
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
-        {account && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[200px] shadow-xs">
-            <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-              N⚡️
+        {/* Supplemental Operational Metrics Grid Layer */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="shadow-none bg-muted/50">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-xs font-semibold uppercase tracking-wider">Completed Contracts</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-muted-foreground" />
+              <span className="text-xl font-bold">{stats.completedGigs}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-none bg-muted/50">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-xs font-semibold uppercase tracking-wider">Cancelled Contracts</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center gap-2">
+              <XCircle className="size-4 text-muted-foreground" />
+              <span className="text-xl font-bold">{stats.cancelledGigs}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-none bg-muted/50">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-xs font-semibold uppercase tracking-wider">Store Inventory</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center gap-2">
+              <Package className="size-4 text-muted-foreground" />
+              <span className="text-xl font-bold">{stats.totalProducts}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-none bg-slate-900 text-slate-50 border-slate-800">
+            <CardHeader className="pb-2">
+              <CardDescription className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Capital Outflow</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              <div className="flex items-center gap-1 text-2xl font-bold">
+                <DollarSign className="size-5" />
+                {(financials.lifetimeSpentGross ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Net: ${(financials.lifetimeNetSpent ?? 0).toFixed(2)} • Fees: ${(financials.lifetimeFeesPaid ?? 0).toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Separator />
+
+        {/* Matching Feed Section */}
+        <section className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Matching Feed</h2>
+          </div>
+          
+          {recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendations.map((freelancer, idx) => (
+                <Card key={idx} className="flex flex-col overflow-hidden transition-all hover:shadow-md">
+                  <CardHeader className="flex flex-row items-start justify-between pb-4">
+                    <Avatar className="size-12 border">
+                      <AvatarImage src={freelancer.profile?.profilePicLink || "https://res.cloudinary.com/dmv76qdpx/image/upload/v1713727931/default-avatar_vqc9tw.png"} alt={freelancer.fullName} />
+                      <AvatarFallback>{freelancer.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <Badge variant="secondary" className="font-medium">
+                      {freelancer.matchPercent}% Match
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1 pb-4">
+                    <CardTitle className="text-lg">{freelancer.fullName}</CardTitle>
+                    <CardDescription className="font-medium">{freelancer.profile?.preferredJobType || "Professional"}</CardDescription>
+                  </CardContent>
+                  <CardFooter className="flex items-center gap-4 pt-0 text-sm text-muted-foreground mt-auto">
+                    <div className="flex items-center gap-1">
+                      <Star className="size-4 fill-primary text-primary" />
+                      <span className="font-medium">4.9</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">Nearby</span>
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nomad Score</p>
-              <h4 className="text-xl font-black text-slate-900 tracking-tight">
-                {account.nomadScore} <span className="text-xs font-medium text-slate-400">/ 100</span>
-              </h4>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Bento Grid Layer */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCardPremium label="Active Projects" value={stats.activeGigs.toString()} suffix="Active Gigs" />
-        <StatCardPremium label="Total Hired" value={stats.totalHired.toString()} suffix="Freelancers" />
-        
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-xs hover:shadow-md transition-all duration-300">
-          <div className="relative z-10">
-            <p className="text-slate-500 font-bold text-xs mb-1 uppercase tracking-widest">Review Required</p>
-            <h3 className="text-2xl text-slate-900 font-bold tracking-tight mb-4">
-              {stats.pendingProposals} Pending Proposals
-            </h3>
-          </div>
-          <Button className="w-fit" color="primary" size="md">
-            Review Now
-          </Button>
-          <div className="absolute -right-4 -bottom-4 text-slate-100/70 pointer-events-none">
-             <span className="material-symbols-outlined text-9xl opacity-10">group</span>
-          </div>
-        </div>
+          ) : (
+            <Card className="flex flex-col items-center justify-center py-16 text-center shadow-none bg-muted/30 border-dashed">
+              <Users className="size-10 text-muted-foreground mb-4 opacity-50" />
+              <CardTitle className="text-lg mb-2">No matching freelancers found</CardTitle>
+              <CardDescription>Post a gig with specific skills to see recommendations.</CardDescription>
+            </Card>
+          )}
+        </section>
       </div>
-
-      {/* Supplemental Operational Metrics Grid Layer */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-        <div className="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Completed Contracts</p>
-          <h5 className="text-xl font-bold text-slate-800">{stats.completedGigs} Gigs</h5>
-        </div>
-        <div className="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Cancelled Contracts</p>
-          <h5 className="text-xl font-bold text-slate-800">{stats.cancelledGigs} Gigs</h5>
-        </div>
-        <div className="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Store Inventory</p>
-          <h5 className="text-xl font-bold text-slate-800">{stats.totalProducts} Products</h5>
-        </div>
-        
-        <div className="bg-slate-900 text-white rounded-xl p-5 flex flex-col justify-between shadow-xs">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Capital Outflow</p>
-            <h5 className="text-xl font-extrabold tracking-tight">
-              ${(financials.lifetimeSpentGross ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </h5>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2">
-            Net Transacted: ${(financials.lifetimeNetSpent ?? 0).toFixed(2)} | Gateway Fees: ${(financials.lifetimeFeesPaid ?? 0).toFixed(2)}
-          </p>
-        </div>
-      </div>
-
-      {/* Matching Feed Section */}
-      <section>
-        <div className="flex items-end justify-between mb-8">
-          <h2 className="text-3xl font-extrabold tracking-tight font-headline">Matching Feed</h2>
-        </div>
-        {recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {recommendations.map((freelancer, idx) => (
-              <FreelancerCardPremium key={idx} data={formatFreelancerData(freelancer)} />
-            ))}
-          </div>
-        ) : (
-          <div className="bg-slate-50 rounded-2xl p-12 text-center border-2 border-dashed border-slate-200">
-            <span className="material-symbols-outlined text-4xl text-slate-300 mb-4">person_search</span>
-            <p className="text-slate-500 font-bold">No matching freelancers found yet.</p>
-            <p className="text-slate-400 text-sm">Post a gig with specific skills to see recommendations.</p>
-          </div>
-        )}
-      </section>
     </DashboardLayout>
   );
 };

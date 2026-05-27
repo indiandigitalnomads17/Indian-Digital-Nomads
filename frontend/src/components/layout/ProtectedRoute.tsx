@@ -83,7 +83,9 @@ export default function ProtectedRoute({
   }, [loading, authenticated, user, requiredRole, redirectPath, router]);
 
   // 1. Still loading — show spinner
+  console.log("[ProtectedRoute] Render state ->", { loading, authenticated, hasUser: !!user });
   if (loading) {
+    console.log("[ProtectedRoute] Rendering AuthLoadingSpinner");
     return <AuthLoadingSpinner />;
   }
 

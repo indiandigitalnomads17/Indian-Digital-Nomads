@@ -1,14 +1,26 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { Bell, CheckCheck, BellOff } from 'lucide-react';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
   useEffect(() => {
     // 1. Fetch initial notifications
@@ -36,17 +48,8 @@ const NotificationBell = () => {
       setUnreadCount(prev => prev + 1);
     });
 
-    // 3. Handle click outside
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       socket.disconnect();
-      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -71,73 +74,90 @@ const NotificationBell = () => {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors"
-      >
-        <span className="material-symbols-outlined text-[24px]">notifications</span>
-        {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100]">
-          <div className="p-4 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-lowest">
-            <h4 className="text-sm font-black uppercase tracking-widest text-on-surface">Notifications</h4>
-            {unreadCount > 0 && (
-              <button 
-                onClick={markAllAsRead}
-                className="text-[10px] font-bold text-primary hover:underline"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-[400px] overflow-y-auto">
-            {notifications.length > 0 ? (
-              notifications.map((n) => (
-                <div 
-                  key={n.id}
-                  onClick={() => !n.isRead && markAsRead(n.id)}
-                  className={`p-4 border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors cursor-pointer relative ${!n.isRead ? 'bg-blue-50/30' : ''}`}
-                >
-                  <div className="flex gap-3">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!n.isRead ? 'bg-primary' : 'bg-transparent'}`}></div>
-                    <div className="flex-1">
-                      <p className={`text-sm ${!n.isRead ? 'font-bold text-on-surface' : 'text-on-surface-variant font-medium'}`}>
-                        {n.message}
-                      </p>
-                      <p className="text-[10px] text-outline mt-1 font-bold" suppressHydrationWarning>
-                        {new Date(n.createdAt).toLocaleDateString()} • {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                      {n.link && (
-                        <Link 
-                          href={n.link}
-                          className="mt-2 inline-block text-[11px] font-black text-primary uppercase tracking-tighter hover:underline"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          View Details →
-                        </Link>
-                      )}
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full hover:bg-muted/50">
+          <Bell className="size-5 text-muted-foreground" />
+          {unreadCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full p-0 text-[10px]"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      
+      <DropdownMenuContent align="end" className="w-[380px] p-0 overflow-hidden border-border/40 shadow-xl rounded-xl">
+        <div className="flex items-center justify-between p-4 bg-muted/30">
+          <DropdownMenuLabel className="font-semibold px-0 text-sm">Notifications</DropdownMenuLabel>
+          {unreadCount > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={markAllAsRead} 
+              className="h-auto p-0 text-xs text-primary font-medium hover:bg-transparent hover:underline"
+            >
+              <CheckCheck className="mr-1 size-3" /> Mark all as read
+            </Button>
+          )}
+        </div>
+        <DropdownMenuSeparator className="m-0" />
+        
+        <ScrollArea className="max-h-[400px]">
+          {notifications.length > 0 ? (
+            <div className="flex flex-col">
+              {notifications.map((n, i) => (
+                <div key={n.id}>
+                  <div 
+                    onClick={() => {
+                      if (!n.isRead) markAsRead(n.id);
+                      if (n.link) setIsOpen(false); // Close if they are going to navigate
+                    }}
+                    className={`flex flex-col gap-1 p-4 cursor-pointer transition-colors hover:bg-muted/50 ${!n.isRead ? 'bg-primary/5' : ''}`}
+                  >
+                    <div className="flex gap-3">
+                      <div className="flex items-center mt-1">
+                        {n.isRead ? (
+                          <div className="size-2 rounded-full bg-transparent" />
+                        ) : (
+                          <div className="size-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div className="flex flex-col flex-1 gap-1">
+                        <p className={`text-sm ${!n.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
+                          {n.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70" suppressHydrationWarning>
+                          {new Date(n.createdAt).toLocaleDateString()} • {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {n.link && (
+                          <Link 
+                            href={n.link}
+                            className="text-xs font-semibold text-primary hover:underline mt-1 inline-flex items-center"
+                            onClick={() => setIsOpen(false)}
+                          >
+                            View Details
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {i < notifications.length - 1 && <DropdownMenuSeparator className="m-0" />}
                 </div>
-              ))
-            ) : (
-              <div className="p-8 text-center">
-                <span className="material-symbols-outlined text-4xl text-outline mb-2">notifications_off</span>
-                <p className="text-sm font-bold text-outline">All caught up!</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+              <BellOff className="size-10 mb-3 opacity-20" />
+              <p className="font-medium text-sm">All caught up!</p>
+              <p className="text-xs mt-1">You have no new notifications.</p>
+            </div>
+          )}
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

@@ -23,7 +23,10 @@ export default function NotFound() {
 
         <div className="pt-6 flex flex-col gap-3">
           <Button 
-            onClick={() => router.back()} 
+            onClick={() => {
+              console.log("[not-found.tsx] Go Back clicked, executing router.back()");
+              router.back();
+            }} 
             color="primary" 
             className="w-full py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all text-xs"
           >

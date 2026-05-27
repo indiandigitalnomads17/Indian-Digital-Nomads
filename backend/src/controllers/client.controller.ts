@@ -32,6 +32,12 @@ export const onboardClient = async (req: Request, res: Response) => {
       videoUrl = uploadResult?.secure_url;
     }
 
+    let bannerUrl = undefined;
+    if (files?.banner?.[0]) {
+      const uploadResult = await uploadOnCloudinary(files.banner[0].path);
+      bannerUrl = uploadResult?.secure_url;
+    }
+
     const [updatedUser, updatedProfile] = await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
@@ -46,6 +52,7 @@ export const onboardClient = async (req: Request, res: Response) => {
           longitude: longitude ? Number(longitude) : undefined,
           profilePicLink: logoUrl || undefined,
           videoLink: videoUrl || undefined,
+          bannerLink: bannerUrl || undefined,
         },
         include: {
           user: { select: { fullName: true, role: true } }
