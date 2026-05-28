@@ -36,13 +36,18 @@ interface LoadingIndicatorProps {
      * @default 'sm'
      */
     size?: "sm" | "md" | "lg" | "xl";
-    /**
-     * Optional text label displayed below the indicator.
-     */
+    
     label?: string;
+    
+    className?: string;
 }
 
-export const LoadingIndicator = ({ type = "line-simple", size = "sm", label }: LoadingIndicatorProps) => {
+export const LoadingIndicator = ({ 
+    type = "line-simple", 
+    size = "sm", 
+    label,
+    className // Destructured here
+}: LoadingIndicatorProps) => {
     const renderSpinner = () => {
         if (type === "line-spinner") {
             return (
@@ -95,7 +100,6 @@ export const LoadingIndicator = ({ type = "line-simple", size = "sm", label }: L
             );
         }
 
-        // Default case: type === "line-simple"
         return (
             <svg className={cx("animate-spin", styles[size].spinner)} viewBox="0 0 32 32" fill="none">
                 <circle className="text-bg-tertiary" cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="4" />
@@ -115,7 +119,7 @@ export const LoadingIndicator = ({ type = "line-simple", size = "sm", label }: L
     };
 
     return (
-        <div className={cx("flex flex-col items-center justify-center", styles[size].root)}>
+        <div className={cx("flex flex-col items-center justify-center", styles[size].root, className)}>
             {renderSpinner()}
             {label && <span className={cx("text-secondary", styles[size].label)}>{label}</span>}
         </div>
