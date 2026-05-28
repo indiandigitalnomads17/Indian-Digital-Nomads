@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../config/prisma";
-import { uploadOnCloudinary } from "../config/cloudinary";
+import { uploadOnCloudinary ,deleteFromCloudinary} from "../config/cloudinary";
 import { User as PrismaUser, JobStatus, ProposalStatus } from "@prisma/client";
 import { freelancerOnboardingSchema } from "../validations/freelancer.schema";
 import { error } from "node:console";
@@ -127,13 +127,15 @@ export const onboardFreelancer = async (req: Request, res: Response) => {
 export const addProject = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as PrismaUser)?.id;
-    const { title, description, links, skills, completedAt } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     const userProfile = await prisma.profile.findUnique({ where: { userId } });
-    if (!userProfile) return res.status(404).json({ error: "Profile not found" });
+    if (!userProfile) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
 
-    // OPTIMIZED: Concurrent batch uploading via Promise.all pool
+    const { title, description, links, skills, completedAt } = req.body;
+
     const screenshotUrls: string[] = [];
     if (files?.screenshots) {
       const uploadPromises = files.screenshots.map(file => uploadOnCloudinary(file.path));
@@ -144,17 +146,17 @@ export const addProject = async (req: Request, res: Response) => {
       });
     }
 
-    let uploadedVideoUrl = undefined;
+    let uploadedVideoUrl: string | null = null;
     if (files?.projectVideo?.[0]) {
-      const result = await uploadOnCloudinary(files.projectVideo[0].path);
-      uploadedVideoUrl = result?.secure_url;
+      const videoResult = await uploadOnCloudinary(files.projectVideo[0].path);
+      uploadedVideoUrl = videoResult?.secure_url || null;
     }
 
     const newProject = await prisma.project.create({
       data: {
         profileId: userProfile.id,
         title,
-        description,
+        description: description || null,
         links: links ? JSON.parse(links) : [],
         videoUrl: uploadedVideoUrl,
         completedAt: completedAt ? new Date(completedAt) : new Date(), 
@@ -166,36 +168,208 @@ export const addProject = async (req: Request, res: Response) => {
         }
       },
       include: { 
-        images: true,
-        skillsUsed: { 
-          select: { 
+        images: true, 
+        skillsUsed: {
+          select: {
             id: true,
-            name: true, 
-            tier: true,
-            parent: { 
-              select: { 
-                name: true, 
-                tier: true,
-                parent: { 
-                  select: { 
-                    name: true, 
-                    tier: true,
-                    parent: { select: { name: true, tier: true } }
-                  } 
-                } 
-              } 
-            }
-          } 
+            name: true,
+            tier: true
+          }
         }
       }
     });
 
-    res.status(201).json({ success: true, data: newProject });
+    return res.status(201).json({ success: true, data: newProject });
 
   } catch (error) {
     console.error("Add Project Error:", error);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to add project" });
+      return res.status(500).json({ success: false, error: "Failed to add project to profile" });
+    }
+  }
+};
+
+export const editProject = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+    const { projectId } = req.params; 
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    const userProfile = await prisma.profile.findUnique({ where: { userId } });
+    if (!userProfile) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
+
+    const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
+    if (!targetProjectId) {
+      return res.status(400).json({ success: false, error: "Project ID parameter is missing or invalid." });
+    }
+
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        id: targetProjectId,
+        profileId: userProfile.id
+      }
+    });
+
+    if (!existingProject) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Project not found or you do not have permission to modify it." 
+      });
+    }
+
+    const { title, description, links, skills, completedAt } = req.body;
+
+    let parsedLinks: string[] = [];
+    if (links !== undefined) {
+      if (Array.isArray(links)) {
+        parsedLinks = links as string[];
+      } else if (typeof links === "string") {
+        try {
+          const parsed = JSON.parse(links);
+          parsedLinks = Array.isArray(parsed) ? parsed : [links];
+        } catch {
+          parsedLinks = [links]; 
+        }
+      }
+    }
+
+    const newScreenshotUrls: string[] = [];
+    if (files?.screenshots) {
+      const uploadPromises = files.screenshots.map(file => uploadOnCloudinary(file.path));
+      const results = await Promise.all(uploadPromises);
+      
+      results.forEach(result => {
+        if (result?.secure_url) newScreenshotUrls.push(result.secure_url);
+      });
+    }
+
+    let updatedVideoUrl: string | undefined = undefined;
+    if (files?.projectVideo?.[0]) {
+      const videoResult = await uploadOnCloudinary(files.projectVideo[0].path);
+      if (videoResult?.secure_url) {
+        updatedVideoUrl = videoResult.secure_url;
+      }
+    }
+
+    const updatedProject = await prisma.project.update({
+      where: { 
+        id: existingProject.id 
+      },
+      data: {
+        title: title !== undefined ? title : undefined,
+        description: description !== undefined ? description : undefined,
+        completedAt: completedAt ? new Date(completedAt) : undefined,
+        videoUrl: updatedVideoUrl !== undefined ? updatedVideoUrl : undefined,
+        
+        links: links !== undefined ? parsedLinks : undefined,
+
+        images: newScreenshotUrls.length > 0 ? {
+          create: newScreenshotUrls.map(url => ({ url }))
+        } : undefined,
+
+        skillsUsed: skills ? {
+          set: JSON.parse(skills).map((id: string) => ({ id }))
+        } : undefined
+      },
+      include: { 
+        images: true, 
+        skillsUsed: {
+          select: {
+            id: true,
+            name: true,
+            tier: true
+          }
+        }
+      }
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Project updated successfully", 
+      data: updatedProject 
+    });
+
+  } catch (error) {
+    console.error("Edit Project Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, error: "Failed to update project data" });
+    }
+  }
+};
+
+export const deleteProject = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as PrismaUser)?.id;
+    const { projectId } = req.params;
+
+    // 1. Verify user profile exists
+    const userProfile = await prisma.profile.findUnique({ where: { userId } });
+    if (!userProfile) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
+
+    // 2. Normalize projectId parameter type
+    const targetProjectId = Array.isArray(projectId) ? projectId[0] : projectId;
+    if (!targetProjectId) {
+      return res.status(400).json({ success: false, error: "Project ID parameter is missing or invalid." });
+    }
+
+    // 3. Fetch project with its image relations
+    const project = await prisma.project.findFirst({
+      where: {
+        id: targetProjectId,
+        profileId: userProfile.id
+      },
+      include: {
+        images: true
+      }
+    });
+
+    if (!project) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Project not found or you do not have permission to delete it." 
+      });
+    }
+
+    // 4. Clean up Cloudinary Assets Concurrently using your wrapper
+    const deletionPromises: Promise<any>[] = [];
+
+    if (project.videoUrl) {
+      deletionPromises.push(deleteFromCloudinary(project.videoUrl));
+    }
+
+    if (project.images && project.images.length > 0) {
+      project.images.forEach((img) => {
+        deletionPromises.push(deleteFromCloudinary(img.url));
+      });
+    }
+
+    // Fire all deletion requests in parallel
+    if (deletionPromises.length > 0) {
+      await Promise.all(deletionPromises).catch((err) => {
+        console.error("Non-blocking asset cleanup warning:", err);
+      });
+    }
+
+    // 5. Delete from database (Cascades automatically to ProjectImage records via schema)
+    await prisma.project.delete({
+      where: {
+        id: project.id
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Project and all associated media assets permanently deleted."
+    });
+
+  } catch (error) {
+    console.error("Delete Project Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, error: "Failed to delete project data" });
     }
   }
 };
