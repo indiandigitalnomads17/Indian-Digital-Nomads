@@ -1,9 +1,7 @@
 @import "../../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "../../node_modules/shadcn/dist/tailwind.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 

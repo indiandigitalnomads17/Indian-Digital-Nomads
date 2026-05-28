@@ -12,6 +12,8 @@ export const Navbar = () => {
     const items = [
         { label: "How it works", href: "#how-it-works" },
         { label: "Browse Talent", href: "#" },
+        { label: "Browse Jobs", href: "#" },
+        { label: "Browse Businesses", href: "/businesses" },
         { label: "Success Stories", href: "#how-it-works" },
     ];
 

@@ -1,9 +1,8 @@
 "use client";
 
-import { type FC, type ReactNode, useState, useEffect } from "react";
-import { Bell01, ChevronRight, LifeBuoy01, SearchLg, Settings01 } from "@untitledui/icons";
+import { type FC, type ReactNode, useState, useEffect, useCallback } from "react";
+import { Bell01, ChevronRight, SearchLg, Settings01 } from "@untitledui/icons";
 import { TabList, Tabs } from "@/components/application/tabs/tabs";
-import { BadgeWithDot } from "@/components/base/badges/badges";
 import { DropdownAccountButton } from "@/components/base/dropdown/dropdown-account-button";
 import { Input } from "@/components/base/input/input";
 import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
@@ -11,7 +10,6 @@ import { cx } from "@/lib/utils/cx";
 import { MobileNavigationHeader } from "./base-components/mobile-header";
 import { NavAccountCard } from "./base-components/nav-account-card";
 import { NavButton } from "./base-components/nav-button";
-import { NavItemBase } from "./base-components/nav-item";
 import { NavList } from "./base-components/nav-list";
 import api from "@/lib/api";
 
@@ -26,21 +24,14 @@ interface SkillNode {
 }
 
 type NavItem = {
-    /** Label text for the nav item. */
     label: string;
-    /** URL to navigate to when the nav item is clicked. */
     href: string;
-    /** Override the auto-detected active state. When omitted, derived from `activeUrl`. */
     current?: boolean;
-    /** Icon component to display. */
     icon?: FC<{ className?: string }>;
-    /** Badge to display. */
     badge?: ReactNode;
-    /** List of sub-items to display. */
     items?: NavItem[];
 };
 
-/** Returns true if `href` matches `activeUrl` (exact or prefix for nested routes). */
 const isItemActive = (href: string, activeUrl?: string) => {
     if (!activeUrl || !href) return false;
     if (href === activeUrl) return true;
@@ -49,36 +40,13 @@ const isItemActive = (href: string, activeUrl?: string) => {
 };
 
 interface HeaderNavigationBaseProps {
-    /** URL of the currently active item. */
     activeUrl?: string;
-    /** List of items to display. */
     items: NavItem[];
-    /** List of sub-items to display. */
     subItems?: NavItem[];
-    /** Whether to hide the bottom border. */
     hideBorder?: boolean;
-
-    /** Logo to display in the header. */
     logo?: ReactNode;
-
-    /**
-     * Replaces the entire right-side actions (icon buttons + account dropdown).
-     * When provided, the default actions are ignored.
-     */
     actions?: ReactNode;
-
-    /**
-     * Centers the primary nav items between the logo and actions.
-     * @default false
-     */
     centered?: boolean;
-
-    /**
-     * Controls how the secondary header renders sub-items.
-     * - "buttons" — NavButton pills (default)
-     * - "tabs" — Underline tabs
-     * @default "buttons"
-     */
     secondaryType?: "buttons" | "tabs";
 }
 
@@ -96,19 +64,17 @@ const DefaultActions = ({ activeUrl }: { activeUrl?: string }) => {
                         href="/notifications-01"
                         tooltipPlacement="bottom"
                     />
-
                     <div className="absolute -top-0.25 -right-0.25 flex size-3.5 items-center justify-center rounded-full bg-fg-error-primary text-[10px] font-bold text-white">
                         2
                     </div>
                 </div>
             </div>
-
             <DropdownAccountButton />
         </>
     );
 };
 
-const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
+const SkillTreeDropdown = ({ skillTree, type }: { skillTree: SkillNode[]; type: "talents" | "jobs" }) => {
     const [activeCat, setActiveCat] = useState<SkillNode | null>(null);
     const [activeSub, setActiveSub] = useState<SkillNode | null>(null);
     const [activeLeaf, setActiveLeaf] = useState<SkillNode | null>(null);
@@ -119,14 +85,31 @@ const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
         setActiveLeaf(null);
     };
 
+    // Resets dropdown state on browser back-navigation / history transitions
+    useEffect(() => {
+        const handleClear = () => handleMouseLeaveAll();
+        
+        window.addEventListener("pageshow", handleClear);
+        window.addEventListener("popstate", handleClear);
+        
+        return () => {
+            window.removeEventListener("pageshow", handleClear);
+            window.removeEventListener("popstate", handleClear);
+        };
+    }, []);
+
     if (!skillTree || skillTree.length === 0) return null;
+
+    const getBaseUrl = (itemType: "category" | "skill", id: string) => {
+        return `/${type}?${itemType}=${id}`;
+    };
 
     return (
         <div 
             onMouseLeave={handleMouseLeaveAll}
             className="absolute top-full left-0 mt-2 flex items-start pointer-events-none opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 ease-out z-[100]"
         >
-            {/* Panel 1: Categories (2 Columns) */}
+            {/* Panel 1: Categories */}
             <div className="w-[540px] bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-1 pointer-events-auto">
                 <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 max-h-[480px] overflow-y-auto scrollbar-thin pr-1">
                     {skillTree.map((category) => (
@@ -140,7 +123,7 @@ const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
                             className="px-1"
                         >
                             <a
-                                href={`/talents?category=${category.id}`}
+                                href={getBaseUrl("category", category.id)}
                                 className={`flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-100 ${activeCat?.id === category.id ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
                             >
                                 <span>{category.name}</span>
@@ -167,7 +150,7 @@ const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
                                 className="px-1"
                             >
                                 <a
-                                    href={`/talents?skill=${subSkill.id}`}
+                                    href={getBaseUrl("skill", subSkill.id)}
                                     className={`flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-100 ${activeSub?.id === subSkill.id ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
                                 >
                                     <span>{subSkill.name}</span>
@@ -194,7 +177,7 @@ const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
                                 className="px-1"
                             >
                                 <a
-                                    href={`/talents?skill=${leafSkill.id}`}
+                                    href={getBaseUrl("skill", leafSkill.id)}
                                     className={`flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-100 ${activeLeaf?.id === leafSkill.id ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
                                 >
                                     <span>{leafSkill.name}</span>
@@ -215,7 +198,7 @@ const BrowseTalentDropdown = ({ skillTree }: { skillTree: SkillNode[] }) => {
                         {activeLeaf.subSkills.map((atomicSkill) => (
                             <div key={atomicSkill.id} className="px-1">
                                 <a
-                                    href={`/talents?skill=${atomicSkill.id}`}
+                                    href={getBaseUrl("skill", atomicSkill.id)}
                                     className="block w-full px-3 py-1.5 text-xs font-semibold text-slate-700 rounded-xl hover:bg-blue-50/50 hover:text-blue-600 transition-all duration-100"
                                 >
                                     {atomicSkill.name}
@@ -242,7 +225,8 @@ export const HeaderNavigationBase = ({
     const { user, logout } = useAuth();
     const [skillTree, setSkillTree] = useState<SkillNode[]>([]);
 
-    useEffect(() => {
+    // 1. Wrapped fetch mechanism inside a useCallback so it can be called reliably
+    const fetchSkillsTree = useCallback(() => {
         api.get("/api/v1/skills/tree")
             .then((res) => {
                 if (res.data?.success) {
@@ -252,13 +236,35 @@ export const HeaderNavigationBase = ({
             .catch((err) => console.error("Failed to load skills tree matrix:", err));
     }, []);
 
+    // Initial mount fetch
+    useEffect(() => {
+        fetchSkillsTree();
+    }, [fetchSkillsTree]);
+
+    // 2. Clear old state and re-fetch fresh data explicitly on history/navigation events
+    useEffect(() => {
+    // Typing the argument as a standard Event fixes the type mismatch completely
+    const handleNavigationRestore = (event: Event) => {
+        // Re-fetch if navigated via back/forward cache buttons
+        setSkillTree([]); 
+        fetchSkillsTree();
+    };
+
+    window.addEventListener("pageshow", handleNavigationRestore);
+    window.addEventListener("popstate", handleNavigationRestore);
+
+    return () => {
+        window.removeEventListener("pageshow", handleNavigationRestore);
+        window.removeEventListener("popstate", handleNavigationRestore);
+    };
+}, [fetchSkillsTree]);
+
     const isActive = (item: NavItem) => item.current ?? isItemActive(item.href, activeUrl);
 
     const activeParent = items.find((item) => isActive(item) || item.items?.some((sub) => isItemActive(sub.href, activeUrl)));
     const activeSubNavItems = subItems || activeParent?.items;
 
     const showSecondaryNav = activeSubNavItems && activeSubNavItems.length > 0;
-
     const hasCustomActions = actions !== undefined;
 
     const tabItems = showSecondaryNav
@@ -270,32 +276,6 @@ export const HeaderNavigationBase = ({
 
     const activeTabKey = activeSubNavItems?.find((item) => isActive(item))?.label;
 
-    const convertSkillToNavItem = (skill: SkillNode): NavItem => {
-        return {
-            label: skill.name,
-            href: `/talents?skill=${skill.id}`,
-            items: skill.subSkills && skill.subSkills.length > 0
-                ? skill.subSkills.map(convertSkillToNavItem)
-                : undefined
-        };
-    };
-
-    const processedItems = items.map((item) => {
-        if (item.label === "Browse Talent" && skillTree.length > 0) {
-            return {
-                ...item,
-                items: skillTree.map((cat) => ({
-                    label: cat.name,
-                    href: `/talents?category=${cat.id}`,
-                    items: cat.subSkills && cat.subSkills.length > 0
-                        ? cat.subSkills.map(convertSkillToNavItem)
-                        : undefined
-                }))
-            };
-        }
-        return item;
-    });
-
     return (
         <>
             <MobileNavigationHeader logo={logo}>
@@ -304,7 +284,7 @@ export const HeaderNavigationBase = ({
                         {logo || <UntitledLogo className="h-6" />}
                     </div>
 
-                    <NavList items={processedItems} />
+                    <NavList items={items} />
 
                     <div className="mt-auto flex flex-col gap-3 p-4">
                         {user ? (
@@ -355,11 +335,37 @@ export const HeaderNavigationBase = ({
                                 {items.map((item) => {
                                     if (item.label === "Browse Talent") {
                                         return (
-                                            <li key={item.label} className="relative group">
+                                            <li 
+                                                key={item.label} 
+                                                className="relative group"
+                                                onMouseEnter={() => {
+                                                    if (typeof window !== "undefined") {
+                                                        window.dispatchEvent(new Event("popstate"));
+                                                    }
+                                                }}
+                                            >
                                                 <NavButton current={isActive(item)} href={item.href}>
                                                     {item.label}
                                                 </NavButton>
-                                                <BrowseTalentDropdown skillTree={skillTree} />
+                                                <SkillTreeDropdown skillTree={skillTree} type="talents" />
+                                            </li>
+                                        );
+                                    }
+                                    if (item.label === "Browse Jobs") {
+                                        return (
+                                            <li 
+                                                key={item.label} 
+                                                className="relative group"
+                                                onMouseEnter={() => {
+                                                    if (typeof window !== "undefined") {
+                                                        window.dispatchEvent(new Event("popstate"));
+                                                    }
+                                                }}
+                                            >
+                                                <NavButton current={isActive(item)} href={item.href}>
+                                                    {item.label}
+                                                </NavButton>
+                                                <SkillTreeDropdown skillTree={skillTree} type="jobs" />
                                             </li>
                                         );
                                     }
