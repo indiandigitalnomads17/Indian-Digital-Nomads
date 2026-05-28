@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 
-export default function JobsPage() {
+function JobsContent() {
     const searchParams = useSearchParams();
     const categoryId = searchParams.get("category");
     const skillId = searchParams.get("skill");
@@ -49,5 +49,13 @@ export default function JobsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function JobsPage() {
+    return (
+        <Suspense fallback={<div className="pt-24 px-4 md:px-8 max-w-6xl mx-auto text-slate-500">Loading jobs...</div>}>
+            <JobsContent />
+        </Suspense>
     );
 }

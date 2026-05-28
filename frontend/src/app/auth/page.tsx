@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuthContext } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";

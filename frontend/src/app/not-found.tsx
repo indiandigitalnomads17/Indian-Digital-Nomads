@@ -1,46 +1,39 @@
-"use client";
+import React from "react";
+import Link from "next/link";
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/base/buttons/button';
-
-export default function NotFound() {
-  const router = useRouter();
-
+export default function NotFoundPage() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-10 text-center space-y-6">
-        <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-          <span className="material-symbols-outlined text-5xl">construction</span>
-        </div>
-        
-        <div className="space-y-3">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Coming Soon</h1>
-          <p className="text-sm text-slate-500 font-semibold leading-relaxed">
-            We're still building this part of the platform. Please check back later!
-          </p>
-        </div>
+    <section className="bg-white min-h-screen flex items-center justify-center font-sans">
+      <div className="container mx-auto">
+        <div className="flex justify-center">
+          <div className="w-full sm:w-10/12 md:w-8/12 text-center">
+            <div
+              className="bg-[url(https://cdn.dribbble.com/users/285475/screenshots/2083086/dribbble_1.gif)] h-[250px] sm:h-[350px] md:h-[400px] bg-center bg-no-repeat bg-contain"
+              aria-hidden="true"
+            >
+              <h1 className="text-center text-black text-6xl sm:text-7xl md:text-8xl pt-6 sm:pt-8 font-extrabold tracking-tight">
+                404
+              </h1>
+            </div>
 
-        <div className="pt-6 flex flex-col gap-3">
-          <Button 
-            onClick={() => {
-              console.log("[not-found.tsx] Go Back clicked, executing router.back()");
-              router.back();
-            }} 
-            color="primary" 
-            className="w-full py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all text-xs"
-          >
-            Go Back
-          </Button>
-          <Button 
-            href="/" 
-            color="tertiary" 
-            className="w-full py-4 rounded-xl font-black uppercase tracking-[0.2em] active:scale-95 transition-all text-xs"
-          >
-            Return Home
-          </Button>
+            <div className="mt-[-50px]">
+              <h3 className="text-2xl text-black sm:text-3xl font-extrabold mb-4 tracking-tight">
+                Look like you're lost
+              </h3>
+              <p className="mb-6 text-black sm:mb-5">
+                The page you are looking for is not available!
+              </p>
+
+              <Link
+                href="/"
+                className="my-5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all cursor-pointer text-sm inline-block"
+              >
+                Go to Home
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

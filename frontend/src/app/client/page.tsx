@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { ShieldCheck, Users, Briefcase, FileText, CheckCircle2, XCircle, Package, DollarSign, Star } from 'lucide-react';
+import { ShieldCheck, Users, Briefcase, FileText, CheckCircle2, XCircle, Package, DollarSign, Star, Plus } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { LoadingIndicator } from '@/components/application/loading-indicator/loading-indicator';

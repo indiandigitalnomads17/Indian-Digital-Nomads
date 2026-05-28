@@ -40,26 +40,6 @@ const DashboardLayout = ({ children }) => {
         </main>
       </div>
 
-      {/* Floating Action Button */}
-      {user?.role === 'CLIENT' && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                className="fixed bottom-8 right-8 shadow-2xl z-[100] transition-all hover:scale-105 active:scale-95"
-                size="lg"
-                onClick={() => router.push('/client/post-gig')}
-              >
-                <Plus data-icon="inline-start" />
-                Post a New Gig
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="font-semibold mr-2">
-              Post a new gig to attract talent
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
     </div>
   );
 };

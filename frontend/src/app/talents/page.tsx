@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 
-export default function TalentsPage() {
+function TalentsContent() {
     const searchParams = useSearchParams();
     const categoryId = searchParams.get("category");
     const skillId = searchParams.get("skill");
@@ -47,5 +47,13 @@ export default function TalentsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function TalentsPage() {
+    return (
+        <Suspense fallback={<p className="text-slate-500 text-sm pt-24 px-4 md:px-8">Loading talents...</p>}>
+            <TalentsContent />
+        </Suspense>
     );
 }
