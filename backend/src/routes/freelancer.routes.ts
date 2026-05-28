@@ -6,6 +6,7 @@ import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
 import {submitProposal} from  "../controllers/proposal.controller"
+import { analyzeUserProjectVideo } from "../controllers/analyse.controller";
 const router = Router();
 
 router.patch(
@@ -34,6 +35,9 @@ router.post(
 router.get("/get-profile-data", protect, authorize("FREELANCER"), getFreelancerProfileWithAllStats);
 
 router.get("/dashboard-stats", protect, authorize("FREELANCER"), getFreelancerProfileWithAllStats);
+
+router.post("/analyze-project-video", protect, authorize("FREELANCER"), upload.single("video"), analyzeUserProjectVideo);
+
 router.get("/recommendations", protect, authorize("FREELANCER"), getRecommendedJobs);
 
 router.post("/send-proposal", protect, authorize("FREELANCER"), submitProposal);

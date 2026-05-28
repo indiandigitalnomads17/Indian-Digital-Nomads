@@ -9,6 +9,12 @@ interface ParseAudioOptions {
   existingSkills: any[];
 }
 
+interface ParseProjectVideoOptions {
+  filePath: string;
+  rawTitle?: string;
+  existingSkills: any[];
+}
+
 
 export const parseAudioWithGroq = async ({
   filePath,
@@ -85,6 +91,87 @@ export const parseAudioWithGroq = async ({
 
   } catch (error) {
     console.error("Groq Processing Error:", error);
+    throw error;
+  }
+};
+
+
+export const parseProjectVideoWithGroq = async ({
+  filePath,
+  rawTitle = "",
+  existingSkills
+}: ParseProjectVideoOptions) => {
+  try {
+    // 1. Transcribe the audio using Whisper
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(filePath),
+      model: "whisper-large-v3",
+    });
+
+    if (!transcription.text) {
+      throw new Error("Groq Whisper engine failed to return a valid transcript.");
+    }
+
+    // 2. Parse the transcript into a structured Project Profile
+    const chatCompletion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert technical project architect and portfolio evaluator. Your task is to perform an exhaustive semantic analysis on raw voice transcripts of a user explaining their personal or professional project, align their tools perfectly with an existing technical taxonomy, and output a structured JSON string.
+          
+          You MUST structure your JSON output according to this precise 4-tier schema:
+          {
+            "projectTitle": "string (A clean, professional, and descriptive title for the user's project)",
+            "projectOverview": "string (An exhaustive, multi-paragraph overview detailing the problem solved, core application architecture, unique features, and system workflows mentioned in the transcript. Use explicit line breaks (\\n) or string bullet points. DO NOT return an array of strings.)",
+            "matchedSkills": [
+              { "id": "string", "name": "string", "tier": 1, "subSkills": [
+                { "id": "string", "name": "string", "tier": 2, "subSkills": [
+                  { "id": "string", "name": "string", "tier": 3, "subSkills": [
+                    { "id": "string", "name": "string", "tier": 4 }
+                  ]}
+                ]}
+              ]}
+            ],
+            "suggestedNewSkills": [
+              { "name": "string", "tier": 1, "subSkills": [] }
+            ]
+          }
+
+          CRITICAL SKILLS ANALYSIS & MATCHING INSTRUCTIONS:
+          1. RIGOROUS SKILL MATCHING: Evaluate the transcript context dynamically. Identify frameworks, databases, languages, libraries, deployment tools, or architectural methodologies that the user explicitly states or heavily implies they utilized to build this project. Map them directly to Tier 4 leaf skills.
+          2. MAINTAIN ALL ANCESTOR PATHS: If a Leaf Skill (Tier 4, e.g., 'Express') matches, you MUST also include its specific Subskill (Tier 3, e.g., 'Backend Development'), its Parent Skill (Tier 2, e.g., 'Web Development'), and its Category Root (Tier 1, e.g., 'Software Engineering') nesting them cleanly into each other as shown in the schema.
+          3. Base all 'matchedSkills' selections on this exact database tree pool:
+             ${JSON.stringify(existingSkills)}
+          4. For 'matchedSkills', you must use the exact 'id' and 'name' provided in the database tree above. Ensure parents wrap their respective children.
+          5. Only if a tool or skill used in the project is explicitly vital and completely missing from the tree above should you construct its hierarchy cleanly within the 'suggestedNewSkills' array using appropriate tier tags.
+
+          CRITICAL DESCRIPTION & SCOPING INSTRUCTIONS:
+          1. USE EVERY BIT OF INFORMATION: Do not genericize or truncate details. The 'projectOverview' string must capture every specific technical feature, workflow milestone, state management strategy, database design choice, or integration mechanism discussed by the speaker.
+          2. SUITABLE FORMATTING: Ensure the breakdown reads logically, separating the high-level summary from features and technical highlights using clear spacing (\\n).
+
+          CRITICAL SYSTEM HANDLING:
+          - If the content cannot be fully parsed or contains no recognizable tools/features, use clean empty fallbacks.
+          - NEVER include conversational introductions, explanations, apologies, or markdown enclosures like \`\`\`json.`
+        },
+        {
+          role: "user",
+          content: `User's Tentative Project Name: "${rawTitle}". Audio Transcript Content: "${transcription.text}"`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1
+    });
+
+    const rawJsonString = chatCompletion.choices[0]?.message?.content;
+    if (!rawJsonString) {
+      throw new Error("Llama structural analysis engine returned an empty context body.");
+    }
+
+    return JSON.parse(rawJsonString);
+
+  } catch (error) {
+    console.error("Groq Project Processing Error:", error);
     throw error;
   }
 };
