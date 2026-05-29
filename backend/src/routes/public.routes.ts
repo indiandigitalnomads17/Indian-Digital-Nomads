@@ -10,13 +10,13 @@ router.get("/getPublicBuisnesses", getPublicBusinesses);
 router.get("/getPublicJobs", getPublicJobs);
 
 
-router.get("/public/freelancers/:id",protect, getFreelancerPublicProfile);
+router.get("/freelancers/:id",protect, getFreelancerPublicProfile);
 
-router.get("/public/clients/:id",protect, getClientPublicProfile);
+router.get("/clients/:id",protect, getClientPublicProfile);
 
-router.get("/public/projects/:id",protect, getProjectDetails);
+router.get("/projects/:id",protect, getProjectDetails);
 
-router.get("/public/jobs/:id",protect, getPublicJobDetails);
+router.get("/jobs/:id",protect, getPublicJobDetails);
 
 
 

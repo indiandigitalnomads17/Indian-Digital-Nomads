@@ -283,8 +283,8 @@ export default function BrowseJobs() {
                       </div>
 
                       <Button onClick={() => router.push(`/jobs/${job.id}`)} className="font-bold text-xs shrink-0 px-4" size="sm">
-                        View Proposal Specs
-                      </Button>
+                            View Proposal Specs
+                       </Button>
                     </div>
 
                   </div>
