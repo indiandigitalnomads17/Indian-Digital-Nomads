@@ -110,7 +110,7 @@ const SkillTreeDropdown = ({ skillTree, type }: { skillTree: SkillNode[]; type: 
             className="absolute top-full left-0 mt-2 flex items-start pointer-events-none opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 ease-out z-[100]"
         >
             {/* Panel 1: Categories */}
-            <div className="w-[540px] bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-1 pointer-events-auto">
+            <div className="w-[540px] bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-1">
                 <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 max-h-[480px] overflow-y-auto scrollbar-thin pr-1">
                     {skillTree.map((category) => (
                         <div 
@@ -138,7 +138,7 @@ const SkillTreeDropdown = ({ skillTree, type }: { skillTree: SkillNode[]; type: 
 
             {/* Panel 2: Parent Skills */}
             {activeCat && activeCat.subSkills && activeCat.subSkills.length > 0 && (
-                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 pointer-events-auto animate-in fade-in slide-in-from-left-2 duration-150">
+                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 animate-in fade-in slide-in-from-left-2 duration-150">
                     <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto scrollbar-thin">
                         {activeCat.subSkills.map((subSkill) => (
                             <div 
@@ -166,7 +166,7 @@ const SkillTreeDropdown = ({ skillTree, type }: { skillTree: SkillNode[]; type: 
 
             {/* Panel 3: Sub-skills */}
             {activeSub && activeSub.subSkills && activeSub.subSkills.length > 0 && (
-                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 pointer-events-auto animate-in fade-in slide-in-from-left-2 duration-150">
+                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 animate-in fade-in slide-in-from-left-2 duration-150">
                     <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto scrollbar-thin">
                         {activeSub.subSkills.map((leafSkill) => (
                             <div 
@@ -193,7 +193,7 @@ const SkillTreeDropdown = ({ skillTree, type }: { skillTree: SkillNode[]; type: 
 
             {/* Panel 4: Specific Leaf Nodes */}
             {activeLeaf && activeLeaf.subSkills && activeLeaf.subSkills.length > 0 && (
-                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 pointer-events-auto animate-in fade-in slide-in-from-left-2 duration-150">
+                <div className="w-72 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xl ml-2 flex flex-col gap-1 animate-in fade-in slide-in-from-left-2 duration-150">
                     <div className="flex flex-col gap-0.5 max-h-[480px] overflow-y-auto scrollbar-thin">
                         {activeLeaf.subSkills.map((atomicSkill) => (
                             <div key={atomicSkill.id} className="px-1">

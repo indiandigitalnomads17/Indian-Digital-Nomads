@@ -37,11 +37,13 @@ export const getFreelancers = async (req: Request, res: Response): Promise<Respo
     };
 
     if (userLat !== undefined && userLon !== undefined) {
+      delete profileFilter.isNot;
       profileFilter.latitude = { not: null };
       profileFilter.longitude = { not: null };
     }
 
     if (skill) {
+      delete profileFilter.isNot;
       profileFilter.skills = {
         some: {
           name: { equals: skill, mode: 'insensitive' }
@@ -50,14 +52,17 @@ export const getFreelancers = async (req: Request, res: Response): Promise<Respo
     }
 
     if (textLocation) {
+      delete profileFilter.isNot;
       profileFilter.location = { contains: textLocation, mode: 'insensitive' };
     }
 
     if (maxHourlyRate) {
+      delete profileFilter.isNot;
       profileFilter.hourlyRate = { lte: parseFloat(maxHourlyRate) };
     }
 
     if (preferredJobType) {
+      delete profileFilter.isNot;
       profileFilter.preferredJobType = preferredJobType;
     }
 
@@ -212,7 +217,6 @@ export const getPublicBusinesses = async (req: Request, res: Response): Promise<
       role: UserRole.CLIENT, 
       status: 'ACTIVE',
       profile: {
-        isNot: null,
         latitude: { not: null },
         longitude: { not: null }
       }
@@ -253,16 +257,18 @@ export const getPublicBusinesses = async (req: Request, res: Response): Promise<
     });
 
     let structuredBusinesses = businesses.map((biz) => {
-      const totalReviews = biz.reviewsRec.length;
+      const totalReviews = biz.reviewsRec ? biz.reviewsRec.length : 0;
       const averageRating = totalReviews > 0
         ? parseFloat((biz.reviewsRec.reduce((acc, curr) => acc + curr.rating, 0) / totalReviews).toFixed(1))
         : 0;
 
-    
-      const bizLat = biz.profile!.latitude as number;
-      const bizLon = biz.profile!.longitude as number;
+      const bizLat = biz.profile?.latitude as number | undefined;
+      const bizLon = biz.profile?.longitude as number | undefined;
 
-      const distanceAwayKm = parseFloat(calculateDistanceKm(userLat, userLon, bizLat, bizLon).toFixed(2));
+      let distanceAwayKm = 999999;
+      if (bizLat !== undefined && bizLon !== undefined && bizLat !== null && bizLon !== null) {
+          distanceAwayKm = parseFloat(calculateDistanceKm(userLat, userLon, bizLat, bizLon).toFixed(2));
+      }
 
       return {
         id: biz.id,
@@ -271,21 +277,21 @@ export const getPublicBusinesses = async (req: Request, res: Response): Promise<
         nomadScore: biz.nomadScore,
         joinedAt: biz.createdAt,
         distanceAwayKm,
-        profile: {
-          bio: biz.profile!.bio,
-          profilePicLink: biz.profile!.profilePicLink,
-          bannerLink: biz.profile!.bannerLink,
-          location: biz.profile!.location,
+        profile: biz.profile ? {
+          bio: biz.profile.bio,
+          profilePicLink: biz.profile.profilePicLink,
+          bannerLink: biz.profile.bannerLink,
+          location: biz.profile.location,
           latitude: bizLat,
           longitude: bizLon
-        },
+        } : null,
         metrics: {
           averageRating,
           totalReviewCount: totalReviews,
           activeOpenJobsCount: biz._count?.jobsAsClient || 0
         }
       };
-    });
+    }).filter(biz => biz.profile && biz.distanceAwayKm !== 999999);
 
     structuredBusinesses = structuredBusinesses.filter(
       (biz) => biz.distanceAwayKm <= maxRadiusKm

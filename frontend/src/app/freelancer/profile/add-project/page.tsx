@@ -3,7 +3,14 @@ import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Button } from '@/components/base/buttons/button';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 interface SkillNode {
   id: string;
@@ -41,7 +48,7 @@ const AddProject = () => {
     const fetchData = async () => {
       try {
         const [profileRes, skillsRes] = await Promise.all([
-          api.get('/api/v1/freelancer/get-profile-data'),
+          api.get('/api/v1/freelancer/dashboard-stats'),
           api.get('/api/v1/skills/tree')
         ]);
 
@@ -185,251 +192,254 @@ const AddProject = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-10">
-            <div className="mb-8">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Showcase New Project</h1>
-              <p className="text-slate-500 font-semibold text-sm">Add a project to your portfolio to impress potential clients.</p>
-            </div>
+      <div className="max-w-7xl mx-auto py-8 pb-20 px-4 sm:px-6">
+        <Card className="border-none shadow-md">
+          <CardHeader className="pb-8">
+            <CardTitle className="text-3xl font-bold tracking-tight">Showcase New Project</CardTitle>
+            <CardDescription className="text-base font-medium">Add a project to your portfolio to impress potential clients.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+              
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="projectTitle">Project Title</Label>
+                <Input
+                  id="projectTitle"
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="E.g. Full-stack Supply Chain Dashboard Layout"
+                />
+              </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Project Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={e => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                    placeholder="E.g. Full-stack Supply Chain Dashboard Layout"
-                  />
-                </div>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="projectDescription">Description</Label>
+                <Textarea
+                  id="projectDescription"
+                  required
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className="min-h-[120px] resize-none"
+                  placeholder="Describe your architecture role, technical stack, and overall outcome milestones..."
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Description</label>
-                  <textarea
-                    required
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold min-h-[120px]"
-                    placeholder="Describe your architecture role, technical stack, and overall outcome milestones..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between pl-1">
-                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest">Project Links (Optional)</label>
-                      <Button 
-                        type="button" 
-                        color="link-color"
-                        onClick={() => setFormData({ ...formData, links: [...formData.links, ''] })}
-                        className="text-[10px] font-black uppercase text-blue-600 tracking-widest hover:text-blue-700 p-0"
-                      >
-                        + Add Link
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {formData.links.map((link, index) => (
-                        <div key={index} className="flex gap-2">
-                          <input
-                            type="url"
-                            value={link}
-                            onChange={e => {
-                              const newLinks = [...formData.links];
-                              newLinks[index] = e.target.value;
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Project Links (Optional)</Label>
+                    <Button 
+                      type="button" 
+                      variant="link"
+                      onClick={() => setFormData({ ...formData, links: [...formData.links, ''] })}
+                      className="h-auto p-0 text-sm font-semibold text-primary"
+                    >
+                      + Add Link
+                    </Button>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {formData.links.map((link, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          type="url"
+                          value={link}
+                          onChange={e => {
+                            const newLinks = [...formData.links];
+                            newLinks[index] = e.target.value;
+                            setFormData({ ...formData, links: newLinks });
+                          }}
+                          placeholder="https://deployedproject.com"
+                        />
+                        {formData.links.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              const newLinks = formData.links.filter((_, i) => i !== index);
                               setFormData({ ...formData, links: newLinks });
                             }}
-                            className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                            placeholder="https://deployedproject.com"
-                          />
-                          {formData.links.length > 1 && (
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const newLinks = formData.links.filter((_, i) => i !== index);
-                                setFormData({ ...formData, links: newLinks });
-                              }}
-                              color="tertiary-destructive"
-                              className="px-3 rounded-xl flex items-center justify-center border-red-100"
-                            >
-                              <span className="material-symbols-outlined text-sm">delete</span>
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Completion Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.completedAt}
-                      onChange={e => setFormData({ ...formData, completedAt: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold"
-                    />
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                  <Label htmlFor="completedAt">Completion Date</Label>
+                  <Input
+                    id="completedAt"
+                    type="date"
+                    required
+                    value={formData.completedAt}
+                    onChange={e => setFormData({ ...formData, completedAt: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Stacked Skills Map Form Component */}
+              <div className="flex flex-col gap-6 p-6 rounded-lg border bg-muted/30">
+                <div className="flex flex-col gap-1">
+                  <Label>Skills Mapped to This Project</Label>
+                  <p className="text-sm text-muted-foreground">Tag exactly which pipeline nodes your portfolio milestone demonstrates.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground">1. Main Category</Label>
+                    {/* Note: Native select used in form controls to respect custom options structure without heavy shadcn select rewrites */}
+                    <select 
+                      value={selectedParentId} 
+                      onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <option value="">-- Category --</option>
+                      {allSkills.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground">2. Parent Skill</Label>
+                    <select 
+                      value={selectedSubId} 
+                      disabled={!selectedParentId}
+                      onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
+                    >
+                      <option value="">-- Parent Skill --</option>
+                      {parentSkillOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground">3. Sub-Skill</Label>
+                    <select 
+                      value={selectedLeafId} 
+                      disabled={!selectedSubId}
+                      onChange={(e) => { setSelectedLeafId(e.target.value); setSelectedAtomicLeafId(''); }}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
+                    >
+                      <option value="">-- Sub-Skill --</option>
+                      {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground">4. Leaf Expertise</Label>
+                    <div className="flex gap-2">
+                      <select 
+                        value={selectedAtomicLeafId} 
+                        disabled={!selectedLeafId}
+                        onChange={(e) => setSelectedAtomicLeafId(e.target.value)}
+                        className="flex h-10 w-full flex-1 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
+                      >
+                        <option value="">-- Framework --</option>
+                        {atomicLeafSkillOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                      <Button
+                        type="button"
+                        onClick={handleAddSkillFromChain}
+                        disabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Updated 4-Tier Functional Selector Form Chain */}
-                <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                  <div>
-                    <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Skills Mapped to This Project</label>
-                    <p className="text-[11px] text-slate-400 font-semibold mb-3">Tag exactly which pipeline nodes your portfolio milestone demonstrates.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Main Category</span>
-                      <select 
-                        value={selectedParentId} 
-                        onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
-                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
-                      >
-                        <option value="">-- Choose Category --</option>
-                        {allSkills.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Parent Skill</span>
-                      <select 
-                        value={selectedSubId} 
-                        disabled={!selectedParentId}
-                        onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
-                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
-                      >
-                        <option value="">-- Choose Parent Skill --</option>
-                        {parentSkillOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Sub-Skill</span>
-                      <select 
-                        value={selectedLeafId} 
-                        disabled={!selectedSubId}
-                        onChange={(e) => { setSelectedLeafId(e.target.value); setSelectedAtomicLeafId(''); }}
-                        className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
-                      >
-                        <option value="">-- Choose Sub-Skill --</option>
-                        {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col space-y-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">4. Leaf Expertise (Optional)</span>
-                      <div className="flex gap-2">
-                        <select 
-                          value={selectedAtomicLeafId} 
-                          disabled={!selectedLeafId}
-                          onChange={(e) => setSelectedAtomicLeafId(e.target.value)}
-                          className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                <Separator />
+                
+                <div className="flex flex-col gap-2">
+                  <Label>Connected Project Stack ({formData.skills.length})</Label>
+                  <div className="flex flex-col gap-2">
+                    {formData.skills.map((id) => (
+                      <div key={id} className="flex justify-between items-center px-4 py-2 bg-background rounded-md border shadow-sm">
+                        <span className="text-sm font-medium text-foreground">{getSkillPathString(id)}</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleRemoveSkillTag(id)} 
+                          className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <option value="">-- Choose Framework --</option>
-                          {atomicLeafSkillOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
-                        <Button
-                          type="button"
-                          onClick={handleAddSkillFromChain}
-                          isDisabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}
-                          color="primary"
-                          className="px-4 rounded-xl uppercase transition-all shadow-md flex items-center justify-center border-blue-500"
-                        >
-                          Add
+                          <span className="material-symbols-outlined text-sm">close</span>
                         </Button>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-200/60 mt-4">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Connected Project Stack ({formData.skills.length})</p>
-                    <div className="flex flex-col space-y-2">
-                      {formData.skills.map((id) => (
-                        <div key={id} className="flex justify-between items-center px-4 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-sm">
-                          <span className="tracking-tight text-slate-600">{getSkillPathString(id)}</span>
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveSkillTag(id)} 
-                            className="w-5 h-5 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 inline-flex items-center justify-center font-bold text-[11px] border transition-all"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                      {formData.skills.length === 0 && (
-                        <p className="text-xs text-slate-400 font-bold italic pl-1">No technologies linked yet.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2 pl-1">
-                    <span className="material-symbols-outlined text-lg text-blue-600">videocam</span> 
-                    Project Demo Video Clip (Optional)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <label className="cursor-pointer px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-blue-400 shadow-sm transition-all">
-                      Choose Video File
-                      <input type="file" className="hidden" accept="video/*" onChange={handleVideoChange} />
-                    </label>
-                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[250px]">
-                      {videoFile ? videoFile.name : 'No demonstration file attached'}
-                    </span>
-                  </div>
-                  {videoPreview && (
-                    <div className="mt-2 rounded-xl overflow-hidden bg-black aspect-video max-h-44">
-                      <video src={videoPreview} controls className="w-full h-full" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Project Screenshots</label>
-                  <div className="relative group">
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    <div className="w-full px-4 py-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center group-hover:border-blue-400 transition-all">
-                      <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">cloud_upload</span>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                        {formData.screenshots.length > 0 
-                          ? `${formData.screenshots.length} showcase snapshots staged` 
-                          : 'Click to upload user interface screenshots'}
-                      </p>
-                    </div>
+                    ))}
+                    {formData.skills.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">No technologies linked yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-6 border-t border-slate-100">
+              <div className="flex flex-col gap-4 p-6 rounded-lg border bg-muted/30">
+                <Label className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-primary">videocam</span> 
+                  Project Demo Video Clip (Optional)
+                </Label>
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer px-4 py-2 bg-background border border-input rounded-md text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                    Choose Video File
+                    <input type="file" className="hidden" accept="video/*" onChange={handleVideoChange} />
+                  </label>
+                  <span className="text-sm font-medium text-muted-foreground truncate max-w-[250px]">
+                    {videoFile ? videoFile.name : 'No demonstration file attached'}
+                  </span>
+                </div>
+                {videoPreview && (
+                  <div className="mt-2 rounded-lg overflow-hidden bg-black aspect-video max-h-44 max-w-sm border">
+                    <video src={videoPreview} controls className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <Label>Project Screenshots</Label>
+                <div className="relative group">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="flex flex-col items-center justify-center p-12 bg-muted/30 rounded-lg border-2 border-dashed border-input group-hover:border-primary/50 transition-colors">
+                    <span className="material-symbols-outlined text-4xl text-muted-foreground mb-3">cloud_upload</span>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {formData.screenshots.length > 0 
+                        ? `${formData.screenshots.length} showcase snapshots staged` 
+                        : 'Click to upload user interface screenshots'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4 pt-6 mt-4 border-t">
                 <Button
                   type="button"
+                  variant="outline"
                   onClick={() => router.back()}
-                  color="tertiary"
-                  className="px-8 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-red-500 hover:text-white hover:border-red-500 rounded-xl uppercase tracking-widest active:scale-95 transition-all"
+                  className="px-8"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  isLoading={loading}
-                  color="primary"
-                  className="flex-1 py-3 rounded-xl uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+                  disabled={loading}
+                  className="px-8"
                 >
-                  {loading ? 'Publishing showcase instance...' : 'Publish Project'}
+                  {loading ? 'Publishing...' : 'Publish Project'}
                 </Button>
               </div>
+
             </form>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
     </DashboardLayout>
   );
 };

@@ -21,6 +21,8 @@ import { NavButton } from "@/components/application/app-navigation/base-componen
 import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 import type { NavItemType } from "@/components/application/app-navigation/config";
 
+import Link from "next/link";
+
 export const MainSidebarContent = () => {
     const pathname = usePathname();
     const { user, logout } = useAuth();
@@ -62,7 +64,9 @@ export const MainSidebarContent = () => {
     return (
         <div className="flex h-full flex-col bg-white h-screen border-r border-slate-200">
             <div className="p-6">
-                <UntitledLogo className="h-8" />
+                <Link href="/">
+                    <UntitledLogo className="h-8 cursor-pointer" />
+                </Link>
             </div>
 
             <div className="flex-1 overflow-y-auto">

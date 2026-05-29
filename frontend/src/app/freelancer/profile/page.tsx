@@ -3,9 +3,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Avatar } from '@/components/base/avatar/avatar';
-import { Button } from '@/components/base/buttons/button';
 import { ShieldTick, AlertCircle, Mail01, CheckCircle, Loading01 } from '@untitledui/icons';
+
+// Shadcn UI components
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type UserRole = 'CLIENT' | 'FREELANCER';
 type JobStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -172,14 +183,11 @@ const FreelancerProfile = () => {
   const [errors, setErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'showcase' | 'contracts' | 'proposals' | 'reviews'>('showcase');
-
   // --- INTEGRATED IDENTITY OTP STATE HANDLERS ---
   const [showEmailInput, setShowEmailInput] = useState(false);
-  const [emailOtp, setEmailOtp] = useState<string[]>(new Array(6).fill(""));
+  const [emailOtp, setEmailOtp] = useState<string>("");
   const [actionLoading, setActionLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
-  const inputRefs = useRef<HTMLInputElement[]>([]);
 
   // Strict 4-Tier Filtering Selectors State Elements
   const [selectedParentId, setSelectedParentId] = useState<string>(''); 
@@ -211,7 +219,7 @@ const FreelancerProfile = () => {
   const fetchProfileDashboardDataset = async () => {
     try {
       const [profileRes, skillsRes] = await Promise.all([
-        api.get('/api/v1/freelancer/get-profile-data'), 
+        api.get('/api/v1/freelancer/dashboard-stats'), 
         api.get('/api/v1/skills/tree')
       ]);
 
@@ -268,35 +276,17 @@ const FreelancerProfile = () => {
     }
   };
 
-  const handleOtpChange = (value: string, index: number) => {
-    if (isNaN(Number(value))) return;
-    const newOtp = [...emailOtp];
-    newOtp[index] = value.substring(value.length - 1);
-    setEmailOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace' && !emailOtp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
   const handleVerifyEmail = async () => {
-    const finalOtp = emailOtp.join("");
-    if (finalOtp.length < 6) return;
+    if (emailOtp.length < 6) return;
 
     setActionLoading(true);
     setFeedbackMessage({ type: '', text: '' });
     try {
-      const res = await api.post('/api/v1/user/auth/verify-email', { otp: finalOtp });
+      const res = await api.post('/api/v1/user/auth/verify-email', { otp: emailOtp });
       if (res.data.success) {
         setFeedbackMessage({ type: 'success', text: 'Email verified successfully!' });
         setShowEmailInput(false);
-        setEmailOtp(new Array(6).fill(""));
+        setEmailOtp("");
         await fetchProfileDashboardDataset(); 
       }
     } catch (err: any) {
@@ -454,25 +444,34 @@ const FreelancerProfile = () => {
   const leafSkillOptions = subSkillOptions.find(s => s.id === selectedSubId)?.subSkills || [];
   const atomicLeafSkillOptions = leafSkillOptions.find(l => l.id === selectedLeafId)?.subSkills || [];
 
-  if (loading) return <div className="p-20 text-center font-bold">Loading secure professional profile dashboard...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loading01 className="size-8 animate-spin text-muted-foreground" />
+          <p className="text-sm font-medium text-muted-foreground">Loading secure professional profile dashboard...</p>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
     <DashboardLayout>
-      <main className="pt-8 pb-20">
-        <div className="max-w-7xl mx-auto">
+      <main className="container py-8 pb-20">
+        <div className="mx-auto max-w-7xl flex flex-col gap-8">
           
           {/* Top Main Banner Widget Card */}
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-            <div className="h-48 relative group">
+          <Card className="overflow-hidden border-none shadow-md">
+            <div className="group relative h-48 sm:h-64">
               {bannerPreview ? (
-                <img src={bannerPreview} alt="Profile Banner" className="w-full h-full object-cover" />
+                <img src={bannerPreview} alt="Profile Banner" className="h-full w-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-r from-blue-600 to-indigo-700"></div>
+                <div className="h-full w-full bg-gradient-to-r from-blue-600 to-indigo-700"></div>
               )}
               {isEditing && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                  <label className="cursor-pointer bg-white/20 backdrop-blur-md px-6 py-2 rounded-xl text-white font-bold border border-white/30 hover:bg-white/30 truncate max-w-[200px]">
-                    <span className="material-symbols-outlined align-middle mr-2">photo_camera</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md bg-white/20 px-4 py-2 font-medium text-white backdrop-blur-md transition-colors hover:bg-white/30">
+                    <span className="material-symbols-outlined">photo_camera</span>
                     {bannerFile ? bannerFile.name : 'Change Banner'}
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => handleMediaChange(e, 'banner')} />
                   </label>
@@ -480,40 +479,36 @@ const FreelancerProfile = () => {
               )}
             </div>
 
-            <div className="px-8 pb-8">
-              <div className="relative -mt-16 mb-6 flex justify-between items-end">
-                <div className="relative group/avatar inline-flex rounded-full shadow-xl">
-                  <Avatar 
-                    size="2xl"
-                    src={profilePicPreview || undefined}
-                    initials={profile?.account?.fullName?.charAt(0)}
-                    alt="Profile"
-                    rounded
-                    contentClassName="bg-blue-100 text-blue-600"
-                  />
+            <CardContent className="px-6 pb-6 pt-0 sm:px-8 sm:pb-8">
+              <div className="mb-6 flex -translate-y-12 items-end justify-between sm:-translate-y-16">
+                <div className="group/avatar relative inline-flex rounded-full shadow-lg border-4 border-background">
+                  <Avatar className="size-24 sm:size-32">
+                    <AvatarImage src={profilePicPreview || undefined} alt="Profile" className="object-cover" />
+                    <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">{profile?.account?.fullName?.charAt(0) || "U"}</AvatarFallback>
+                  </Avatar>
                   {isEditing && (
-                    <label className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover/avatar:opacity-100 transition-all text-white z-10">
-                      <span className="material-symbols-outlined text-lg">add_a_photo</span>
+                    <label className="absolute inset-0 z-10 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/avatar:opacity-100">
+                      <span className="material-symbols-outlined">add_a_photo</span>
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => handleMediaChange(e, 'profilePic')} />
                     </label>
                   )}
                 </div>
                 <div className="flex gap-4">
-                  <Button onClick={() => { setIsEditing(!isEditing); setErrors({}); }} color="secondary" size="sm" className="bg-white text-black border border-slate-200 rounded-xl hover:border-blue-400 hover:text-white hover:bg-blue-500 transition-all">
-                    <span className="material-symbols-outlined text-md">{isEditing ? 'close' : 'edit'}</span>
+                  <Button variant="outline" size="sm" onClick={() => { setIsEditing(!isEditing); setErrors({}); }} className="gap-2">
+                    <span className="material-symbols-outlined text-sm">{isEditing ? 'close' : 'edit'}</span>
                     {isEditing ? 'Cancel Edit' : 'Edit Profile'}
                   </Button>
                 </div>
               </div>
 
               {isEditing ? (
-                <form onSubmit={handleUpdateProfile} className="space-y-8">
+                <form onSubmit={handleUpdateProfile} className="flex flex-col gap-8">
                   {Object.keys(errors).length > 0 && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
-                      <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-2">Validation Errors Found:</p>
-                      <ul className="list-disc pl-5 space-y-1">
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+                      <p className="mb-2 text-sm font-semibold text-destructive">Validation Errors Found:</p>
+                      <ul className="list-inside list-disc space-y-1">
                         {Object.entries(errors).map(([key, val]) => (
-                          <li key={key} className="text-xs font-bold text-red-500">
+                          <li key={key} className="text-sm text-destructive/90">
                             <span className="capitalize">{key}</span>: {((val as any)._errors as string[])?.join(', ') || 'Invalid parameter'}
                           </li>
                         ))}
@@ -521,543 +516,609 @@ const FreelancerProfile = () => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                       <div className="flex flex-col space-y-2">
-                         <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Professional Tagline</label>
-                         <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className={`w-full px-4 py-3 bg-slate-50 rounded-xl border ${errors.bio ? 'border-red-300 bg-red-50' : 'border-slate-200'} focus:border-blue-500 outline-none text-sm font-semibold min-h-[120px]`} placeholder="Passionate expert specializing in..." />
+                  <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                    <div className="flex flex-col gap-6">
+                       <div className="flex flex-col gap-2">
+                         <Label>Professional Tagline</Label>
+                         <Textarea 
+                            value={formData.bio} 
+                            onChange={e => setFormData({...formData, bio: e.target.value})} 
+                            placeholder="Passionate expert specializing in..." 
+                            className="min-h-[120px] resize-none" 
+                         />
                        </div>
 
-                       <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                          <label className="text-xs font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg text-blue-600">videocam</span> Intro Video Pitch
-                          </label>
+                       <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4">
+                          <Label className="flex items-center gap-2 text-primary">
+                            <span className="material-symbols-outlined text-base">videocam</span> Intro Video Pitch
+                          </Label>
                           <div className="flex items-center gap-4">
-                            <label className="cursor-pointer px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-blue-400 shadow-sm transition-all">
+                            <label className="cursor-pointer rounded-md border bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
                               Choose Video File
                               <input type="file" className="hidden" accept="video/*" onChange={(e) => handleMediaChange(e, 'video')} />
                             </label>
-                            <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">{videoFile ? videoFile.name : (videoPreview ? 'Active verified profile clip' : 'No clip attached')}</span>
+                            <span className="text-sm text-muted-foreground truncate max-w-[200px]">{videoFile ? videoFile.name : (videoPreview ? 'Active verified profile clip' : 'No clip attached')}</span>
                           </div>
                           {videoPreview && (
-                            <div className="mt-2 rounded-xl overflow-hidden bg-black aspect-video max-h-40">
-                              <video src={videoPreview} controls className="w-full h-full" />
+                            <div className="mt-2 aspect-video max-h-40 overflow-hidden rounded-md bg-black">
+                              <video src={videoPreview} controls className="h-full w-full" />
                             </div>
                           )}
                        </div>
                     </div>
 
-                    <div className="space-y-6">
-                       <div className="space-y-2">
-                          <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Home Base (Location)</label>
+                    <div className="flex flex-col gap-6">
+                       <div className="flex flex-col gap-2">
+                          <Label>Home Base (Location)</Label>
                           <div className="flex gap-2">
-                            <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="City, Country" className="flex-1 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-semibold" />
-                            <Button type="button" onClick={detectLocation} isLoading={detecting} className="bg-blue-50 text-blue-600 rounded-xl border border-blue-100 hover:bg-blue-600 hover:text-white"><span className="material-symbols-outlined text-lg">my_location</span></Button>
+                            <Input 
+                               type="text" 
+                               value={formData.location} 
+                               onChange={e => setFormData({...formData, location: e.target.value})} 
+                               placeholder="City, Country" 
+                            />
+                            <Button type="button" variant="secondary" onClick={detectLocation} disabled={detecting} className="w-12 px-0">
+                                {detecting ? <Loading01 className="size-4 animate-spin" /> : <span className="material-symbols-outlined text-sm">my_location</span>}
+                            </Button>
                           </div>
                        </div>
 
                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex flex-col space-y-2">
-                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Preferred Structure</label>
-                            <select value={formData.preferredJobType} onChange={e => setFormData({...formData, preferredJobType: e.target.value as JobType})} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold">
+                          <div className="flex flex-col gap-2">
+                            <Label>Preferred Structure</Label>
+                            {/* In a real scenario you'd use Shadcn Select, but native select works for this refactor to keep logic simple */}
+                            <select 
+                              value={formData.preferredJobType} 
+                              onChange={e => setFormData({...formData, preferredJobType: e.target.value as JobType})} 
+                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
                               <option value="FIXED_PRICE">Fixed Price Contracts</option>
                               <option value="HOURLY">Hourly Billing Layout</option>
                             </select>
                           </div>
-                          <div className="flex flex-col space-y-2">
-                            <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Phone Contact</label>
-                            <input type="text" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold" />
+                          <div className="flex flex-col gap-2">
+                            <Label>Phone Contact</Label>
+                            <Input type="text" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                           </div>
                        </div>
 
-                       <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col space-y-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-xs font-black uppercase text-slate-700 tracking-tight">Open to Hourly Freelancing</p>
-                            </div>
-                            <button type="button" onClick={() => setFormData({...formData, isHourly: !formData.isHourly})} className={`w-12 h-6 flex items-center rounded-full p-1 transition-all ${formData.isHourly ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'}`}><span className="bg-white w-4 h-4 rounded-full shadow-md"></span></button>
+                       <div className="flex flex-col gap-4 rounded-lg border bg-muted/50 p-4">
+                          <div className="flex items-center justify-between">
+                            <Label>Open to Hourly Freelancing</Label>
+                            <button type="button" onClick={() => setFormData({...formData, isHourly: !formData.isHourly})} className={`flex h-6 w-11 items-center rounded-full p-0.5 transition-colors ${formData.isHourly ? 'bg-primary justify-end' : 'bg-input justify-start'}`}>
+                                <span className="h-5 w-5 rounded-full bg-background shadow-sm transition-transform"></span>
+                            </button>
                           </div>
                           {formData.isHourly && (
-                            <div className="space-y-1">
-                              <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Hourly Compensation Rate (₹)</label>
-                              <input type="number" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: e.target.value})} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-200 focus:border-blue-500 text-sm font-semibold" />
+                            <div className="flex flex-col gap-2">
+                              <Label>Hourly Compensation Rate (₹)</Label>
+                              <Input type="number" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: e.target.value})} />
                             </div>
                           )}
                        </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-6">
                     <div>
-                      <label className="text-xs font-black uppercase text-slate-400 tracking-widest pl-1">Technical Stack & Core Expertise Mapping</label>
-                      <p className="text-[11px] text-slate-400 font-semibold mb-3">Traverse categories systematically down to specific atomic skill nodes ($Category \rightarrow Parent \rightarrow Sub \rightarrow Leaf$).</p>
+                      <Label>Technical Stack & Core Expertise Mapping</Label>
+                      <p className="text-sm text-muted-foreground">Traverse categories systematically down to specific atomic skill nodes ($Category \rightarrow Parent \rightarrow Sub \rightarrow Leaf$).</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">1. Main Category</span>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">1. Main Category</Label>
                         <select 
                           value={selectedParentId} 
                           onChange={(e) => { setSelectedParentId(e.target.value); setSelectedSubId(''); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
-                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none"
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         >
                           <option value="">-- Choose Category --</option>
                           {allSkills.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                       </div>
 
-                      <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">2. Parent Skill</span>
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">2. Parent Skill</Label>
                         <select 
                           value={selectedSubId} 
                           disabled={!selectedParentId}
                           onChange={(e) => { setSelectedSubId(e.target.value); setSelectedLeafId(''); setSelectedAtomicLeafId(''); }}
-                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
                         >
                           <option value="">-- Choose Parent Skill --</option>
                           {subSkillOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                       </div>
 
-                      <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">3. Sub-Skill</span>
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">3. Sub-Skill</Label>
                         <select 
                           value={selectedLeafId} 
                           disabled={!selectedSubId}
                           onChange={(e) => { setSelectedLeafId(e.target.value); setSelectedAtomicLeafId(''); }}
-                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
                         >
                           <option value="">-- Choose Sub-Skill --</option>
                           {leafSkillOptions.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                         </select>
                       </div>
 
-                      <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1">4. Specific Leaf Node</span>
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">4. Specific Leaf Node</Label>
                         <div className="flex gap-2">
                           <select 
                             value={selectedAtomicLeafId} 
                             disabled={!selectedLeafId}
                             onChange={(e) => setSelectedAtomicLeafId(e.target.value)}
-                            className="flex-1 px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold focus:border-blue-500 outline-none disabled:opacity-50"
+                            className="flex h-10 w-full flex-1 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
                           >
-                            <option value="">-- Choose Framework / Tool --</option>
+                            <option value="">-- Choose Framework --</option>
                             {atomicLeafSkillOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                           </select>
                           
-                          <Button
-                            type="button"
-                            onClick={handleAddSkillFromChain}
-                            isDisabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}
-                            color="primary"
-                            className="px-5 rounded-xl uppercase shadow-md flex items-center justify-center"
-                          >
+                          <Button type="button" onClick={handleAddSkillFromChain} disabled={!(selectedParentId || selectedSubId || selectedLeafId || selectedAtomicLeafId)}>
                             Add
                           </Button>
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-200/60 mt-4">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 pl-1">Currently Stacked Skills Tree ({formData.skills.length})</p>
-                      <div className="flex flex-col space-y-2">
+                    <Separator className="my-4" />
+                    
+                    <div className="flex flex-col gap-2">
+                      <Label>Currently Stacked Skills Tree ({formData.skills.length})</Label>
+                      <div className="flex flex-col gap-2">
                         {formData.skills.map((id) => (
-                          <div key={id} className="flex justify-between items-center px-4 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-sm transition-all">
-                            <span className="tracking-tight text-slate-600">{getSkillPathString(id)}</span>
-                            <button 
-                              type="button" 
-                              onClick={() => handleRemoveSkillTag(id)} 
-                              className="w-5 h-5 rounded-lg bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 inline-flex items-center justify-center font-bold text-[11px] border transition-all"
-                            >
-                              ⟷
-                            </button>
+                          <div key={id} className="flex items-center justify-between rounded-md border bg-background px-4 py-2 text-sm shadow-sm">
+                            <span className="text-foreground">{getSkillPathString(id)}</span>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveSkillTag(id)} className="h-8 w-8 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                                <span className="material-symbols-outlined text-sm">close</span>
+                            </Button>
                           </div>
                         ))}
                         {formData.skills.length === 0 && (
-                          <p className="text-xs text-slate-400 font-bold italic pl-1">No hierarchy paths selected yet.</p>
+                          <p className="text-sm text-muted-foreground italic">No hierarchy paths selected yet.</p>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-4 border-t border-slate-100">
-                    <Button type="submit" isLoading={submitting} color="secondary" size="xl" className="rounded-xl font-black shadow-xl shadow-blue-500/30 uppercase tracking-widest">{submitting ? 'Saving Changes...' : 'Update Professional Profile'}</Button>
+                  <div className="flex justify-end border-t pt-6">
+                    <Button type="submit" size="lg" disabled={submitting}>
+                        {submitting && <Loading01 className="mr-2 size-4 animate-spin" />}
+                        {submitting ? 'Saving Changes...' : 'Update Professional Profile'}
+                    </Button>
                   </div>
                 </form>
               ) : (
-                <div className="space-y-8">
-                  <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-3">
-                      {profile?.account?.fullName}
+                <div className="flex flex-col gap-8">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                        {profile?.account?.fullName}
+                      </h1>
                       {profile?.account?.verifications?.isGlobalVerified && (
-                        <ShieldTick className="size-7 text-blue-600 fill-blue-50 animate-pulse" />
+                        <ShieldTick className="size-6 sm:size-8 text-primary animate-pulse" />
                       )}
-                    </h1>
-
-                    {/* HIGH IMPORTANCE: Premium Compliance Identity Verification Flags Grid */}
-                    <div className="flex flex-wrap gap-2.5 mb-4">
-                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-rose-50 text-rose-700 border-rose-200/80 animate-pulse'}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.verifications?.isEmailVerified ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        {profile?.account?.verifications?.isEmailVerified ? 'Nomad Email Verified' : 'Action Required: Email Unverified'}
-                      </span>
-                      <span className={`text-[11px] px-3.5 py-1 rounded-xl font-extrabold border shadow-xs tracking-tight flex items-center gap-1.5 transition-all ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-amber-50 text-amber-700 border-amber-200/80'}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${profile?.account?.verifications?.isPhoneNumberVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                        {profile?.account?.verifications?.isPhoneNumberVerified ? 'Secure SMS Terminal Bound' : 'Mobile Gateway Unlinked'}
-                      </span>
-                      <span className="bg-slate-900 text-white text-[11px] px-3.5 py-1 rounded-xl font-extrabold uppercase tracking-wider shadow-xs flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-                        KYC Registry: {profile?.account?.verifications?.kycStatus || 'NOT_SUBMITTED'}
-                      </span>
                     </div>
 
-                    <p className="text-sm font-bold text-slate-400 mb-2 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">mail</span>{profile?.account?.email}
-                    </p>
-                    <p className="text-lg text-slate-500 font-semibold max-w-2xl leading-relaxed">{profile?.profileMetadata?.bio || "No professional tagline added yet."}</p>
+                    {/* Verified Flags */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {profile?.account?.verifications?.isEmailVerified ? (
+                         <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 gap-1.5">
+                           <span className="size-1.5 rounded-full bg-emerald-500" /> Nomad Email Verified
+                         </Badge>
+                      ) : (
+                         <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive gap-1.5 animate-pulse">
+                           <span className="size-1.5 rounded-full bg-destructive" /> Action Required: Email Unverified
+                         </Badge>
+                      )}
+                      
+                      {profile?.account?.verifications?.isPhoneNumberVerified ? (
+                         <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 gap-1.5">
+                           <span className="size-1.5 rounded-full bg-emerald-500" /> Secure SMS Terminal Bound
+                         </Badge>
+                      ) : (
+                         <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 gap-1.5">
+                           <span className="size-1.5 rounded-full bg-amber-500" /> Mobile Gateway Unlinked
+                         </Badge>
+                      )}
+
+                      <Badge variant="secondary" className="gap-1.5">
+                        <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                        KYC Registry: {profile?.account?.verifications?.kycStatus || 'NOT_SUBMITTED'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                       <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                         <Mail01 className="size-4" />{profile?.account?.email}
+                       </p>
+                       <p className="text-base text-foreground sm:text-lg max-w-3xl leading-relaxed">
+                         {profile?.profileMetadata?.bio || "No professional tagline added yet."}
+                       </p>
+                    </div>
                   </div>
                   
-                  <div className="flex flex-wrap gap-8 py-8 border-y border-slate-100">
+                  <Separator />
+
+                  <div className="flex flex-wrap gap-6 sm:gap-10">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100"><span className="material-symbols-outlined text-2xl">location_on</span></div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Current Base</p>
-                        <p className="text-base font-bold text-slate-900">{profile?.profileMetadata?.location || "Not Set"}</p>
+                      <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <span className="material-symbols-outlined">location_on</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Base</span>
+                        <span className="text-base font-semibold text-foreground">{profile?.profileMetadata?.location || "Not Set"}</span>
                       </div>
                     </div>
+
                     {profile?.profileMetadata?.rates?.isHourly && (
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100"><span className="material-symbols-outlined text-2xl">local_atm</span></div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Standard Rate</p>
-                          <p className="text-base font-bold text-slate-900">₹{profile?.profileMetadata?.rates?.hourlyRate || '0'}/hr</p>
+                        <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+                          <span className="material-symbols-outlined">local_atm</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Standard Rate</span>
+                          <span className="text-base font-semibold text-foreground">₹{profile?.profileMetadata?.rates?.hourlyRate || '0'}/hr</span>
                         </div>
                       </div>
                     )}
+
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100"><span className="material-symbols-outlined text-2xl">event_available</span></div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1.5">Job Preference</p>
-                        <p className="text-base font-bold text-slate-900">{profile?.profileMetadata?.rates?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}</p>
+                      <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <span className="material-symbols-outlined">event_available</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Job Preference</span>
+                        <span className="text-base font-semibold text-foreground">{profile?.profileMetadata?.rates?.preferredJobType === 'HOURLY' ? 'Hourly Basis' : 'Fixed Project'}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Verified Contact Phone</p>
-                      <p className="text-sm font-bold text-slate-800">{profile?.account?.phoneNumber || <span className="text-slate-400 italic">Not set yet</span>}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Hourly Discovery Visibility</p>
-                      <p className="text-sm font-bold text-slate-800">
-                        {profile?.profileMetadata?.rates?.isHourly ? (
-                          <span className="text-green-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Active in Directories</span>
-                        ) : (
-                          <span className="text-slate-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300"></span> Off-grid (Fixed Only)</span>
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Account Registration Date</p>
-                      <p className="text-sm font-bold text-slate-800">{profile?.account?.createdAt ? new Date(profile.account.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
-                    </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                     <Card className="shadow-none bg-muted/30">
+                        <CardContent className="p-4 flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verified Contact Phone</span>
+                           <span className="text-sm font-medium text-foreground">{profile?.account?.phoneNumber || <span className="text-muted-foreground italic">Not set yet</span>}</span>
+                        </CardContent>
+                     </Card>
+                     <Card className="shadow-none bg-muted/30">
+                        <CardContent className="p-4 flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hourly Discovery Visibility</span>
+                           <span className="text-sm font-medium text-foreground">
+                             {profile?.profileMetadata?.rates?.isHourly ? (
+                               <span className="flex items-center gap-2 text-emerald-600"><span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Active in Directories</span>
+                             ) : (
+                               <span className="flex items-center gap-2 text-muted-foreground"><span className="size-2 rounded-full bg-muted-foreground/40"></span> Off-grid (Fixed Only)</span>
+                             )}
+                           </span>
+                        </CardContent>
+                     </Card>
+                     <Card className="shadow-none bg-muted/30">
+                        <CardContent className="p-4 flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Account Registration Date</span>
+                           <span className="text-sm font-medium text-foreground">{profile?.account?.createdAt ? new Date(profile.account.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
+                        </CardContent>
+                     </Card>
                   </div>
 
                   {profile?.profileMetadata?.videoLink && (
-                    <div className="space-y-3">
-                       <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>Video Pitch</h3>
-                       <div className="max-w-xl rounded-2xl overflow-hidden bg-slate-950 aspect-video shadow-md"><video src={profile.profileMetadata.videoLink} controls className="w-full h-full" /></div>
+                    <div className="flex flex-col gap-4">
+                       <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                         <span className="size-2 rounded-full bg-primary"></span>Video Pitch
+                       </h3>
+                       <div className="aspect-video max-w-xl overflow-hidden rounded-xl bg-black">
+                         <video src={profile.profileMetadata.videoLink} controls className="h-full w-full object-cover" />
+                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                  <div className="flex flex-col gap-4">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                      <span className="size-2 rounded-full bg-primary"></span>
                       Verified Hierarchy Expertise Stack
                     </h3>
-                    <div className="flex flex-col space-y-2">
+                    <div className="flex flex-wrap gap-3">
                        {profile?.profileMetadata?.skillsTree.map(skill => (
-                         <div key={skill.id} className="px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-black shadow-sm flex items-center gap-2">
-                           <span className="material-symbols-outlined text-blue-600 text-base">layers</span>
-                           <span className="tracking-tight">{renderSkillHierarchy(skill)}</span>
+                         <div key={skill.id} className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2 text-sm font-medium shadow-sm">
+                           <span className="material-symbols-outlined text-primary text-base">layers</span>
+                           <span>{renderSkillHierarchy(skill)}</span>
                          </div>
                        ))}
+                       {(!profile?.profileMetadata?.skillsTree || profile.profileMetadata.skillsTree.length === 0) && (
+                         <span className="text-sm text-muted-foreground italic">No expertise added yet.</span>
+                       )}
                     </div>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Subsections Content Framework Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-8 space-y-6">
-               <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex gap-2 overflow-x-auto">
-                 {[
-                   { id: 'showcase', label: 'Portfolio Showcase', count: profile?.portfolioStore?.totalProjectsListed || 0 },
-                   { id: 'contracts', label: 'Active Contracts', count: profile?.workHistoryMetrics?.activeContracts || 0 },
-                   { id: 'proposals', label: 'Sent Proposals', count: profile?.proposalFunnelMetrics?.totalApplicationsSubmitted || 0 },
-                   { id: 'reviews', label: 'Client Reviews', count: profile?.reputationScorecard?.totalReviewsCount || 0 },
-                 ].map((tab) => (
-                   <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 min-w-[120px] py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 bg-transparent'}`}>
-                     {tab.label} ({tab.count})
-                   </button>
-                 ))}
-               </div>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            
+            <div className="flex flex-col gap-6 lg:col-span-8">
+               
+               <Tabs defaultValue="showcase" className="w-full">
+                 <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+                   <TabsTrigger value="showcase" className="rounded-lg border bg-background px-6 py-2.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                     Portfolio Showcase ({profile?.portfolioStore?.totalProjectsListed || 0})
+                   </TabsTrigger>
+                   <TabsTrigger value="contracts" className="rounded-lg border bg-background px-6 py-2.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                     Active Contracts ({profile?.workHistoryMetrics?.activeContracts || 0})
+                   </TabsTrigger>
+                   <TabsTrigger value="proposals" className="rounded-lg border bg-background px-6 py-2.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                     Sent Proposals ({profile?.proposalFunnelMetrics?.totalApplicationsSubmitted || 0})
+                   </TabsTrigger>
+                   <TabsTrigger value="reviews" className="rounded-lg border bg-background px-6 py-2.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                     Client Reviews ({profile?.reputationScorecard?.totalReviewsCount || 0})
+                   </TabsTrigger>
+                 </TabsList>
 
-               {/* --- DYNAMIC OTP INPUT CODE SLIDE PANELS --- */}
-               {showEmailInput && (
-                 <div className="w-full bg-blue-50/40 border border-blue-200/60 rounded-3xl p-6 transition-all duration-300">
-                   <div className="max-w-md mx-auto text-center space-y-4">
-                     <div>
-                       <h4 className="text-base font-bold text-slate-900">Confirm OTP Token Code</h4>
-                       <p className="text-xs text-slate-500">Type the 6-digit verification code sent to your email handle dynamically.</p>
-                     </div>
-                     
-                     <div className="flex justify-center gap-2">
-                       {emailOtp.map((digit, idx) => (
-                         <input
-                           key={idx}
-                           type="text"
-                           maxLength={1}
-                           value={digit}
-                           onChange={(e) => handleOtpChange(e.target.value, idx)}
-                           onKeyDown={(e) => handleOtpKeyDown(e, idx)}
-                           ref={(el) => { if (el) inputRefs.current[idx] = el; }}
-                           className="w-11 h-12 text-center text-lg font-bold border border-slate-300 bg-white rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all shadow-xs text-slate-900"
-                         />
-                       ))}
-                     </div>
+                 {/* --- DYNAMIC OTP INPUT CODE SLIDE PANELS --- */}
+                 {showEmailInput && (
+                   <Card className="mt-6 border-primary/30 bg-primary/5 shadow-sm">
+                     <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+                       <h4 className="mb-2 text-lg font-semibold text-foreground">Confirm OTP Token Code</h4>
+                       <p className="mb-6 text-sm text-muted-foreground">Type the 6-digit verification code sent to your email handle dynamically.</p>
+                       
+                       <InputOTP maxLength={6} value={emailOtp} onChange={setEmailOtp}>
+                         <InputOTPGroup className="gap-2">
+                           <InputOTPSlot index={0} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                           <InputOTPSlot index={1} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                           <InputOTPSlot index={2} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                           <InputOTPSlot index={3} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                           <InputOTPSlot index={4} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                           <InputOTPSlot index={5} className="rounded-md border bg-background h-12 w-12 text-lg" />
+                         </InputOTPGroup>
+                       </InputOTP>
 
-                     <div className="flex gap-3 justify-center">
-                       <button onClick={() => setShowEmailInput(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
-                         Cancel
-                       </button>
-                       <button
-                         onClick={handleVerifyEmail}
-                         disabled={actionLoading || emailOtp.includes("")}
-                         className="px-5 py-2 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:bg-slate-300 transition flex items-center gap-2 shadow-sm"
-                       >
-                         {actionLoading && <Loading01 className="size-3 animate-spin" />}
-                         Submit Verification
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-               )}
+                       <div className="mt-8 flex items-center justify-center gap-4">
+                         <Button variant="ghost" onClick={() => setShowEmailInput(false)}>
+                           Cancel
+                         </Button>
+                         <Button onClick={handleVerifyEmail} disabled={actionLoading || emailOtp.length < 6}>
+                           {actionLoading && <Loading01 className="mr-2 size-4 animate-spin" />}
+                           Submit Verification
+                         </Button>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 )}
 
-               {activeTab === 'showcase' && (
-                 <div className="space-y-4">
-                    <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                      <h2 className="text-xl font-black text-slate-900">Showcase</h2>
-                      <Button onClick={() => router.push('/freelancer/profile/add-project')} color="secondary" size="sm" className="rounded-xl text-xs font-black uppercase tracking-wider"><span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project</Button>
+                 <TabsContent value="showcase" className="mt-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between rounded-xl border bg-background p-6 shadow-sm">
+                      <h2 className="text-xl font-bold text-foreground">Showcase</h2>
+                      <Button onClick={() => router.push('/freelancer/profile/add-project')} variant="secondary" size="sm" className="gap-2">
+                        <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project
+                      </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col gap-4">
                       {profile?.portfolioStore?.currentBatch && profile.portfolioStore.currentBatch.length > 0 ? (
                         profile.portfolioStore.currentBatch.map((project: Project) => (
-                          <div key={project.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex gap-6 items-start hover:border-blue-400 transition-all group">
-                            <div className="w-40 h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 relative">
-                              {project.images?.[0] ? <img src={project.images[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><span className="material-symbols-outlined text-4xl">image</span></div>}
+                          <Card key={project.id} className="group overflow-hidden transition-all hover:border-primary/50">
+                            <div className="flex flex-col sm:flex-row">
+                              <div className="relative h-40 w-full shrink-0 bg-muted sm:w-48 sm:h-auto">
+                                {project.images?.[0] ? (
+                                   <img src={project.images[0].url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> 
+                                ) : (
+                                   <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
+                                     <span className="material-symbols-outlined text-4xl">image</span>
+                                   </div>
+                                )}
+                              </div>
+                              <CardContent className="flex flex-1 flex-col justify-center p-6">
+                                <h3 className="mb-2 text-lg font-bold uppercase tracking-tight text-foreground">{project.title}</h3>
+                                <p className="line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
+                              </CardContent>
                             </div>
-                            <div className="flex-1">
-                              <h3 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-tight">{project.title}</h3>
-                              <p className="text-xs text-slate-500 mb-3 line-clamp-2">{project.description}</p>
-                            </div>
-                          </div>
+                          </Card>
                         ))
                       ) : (
-                        <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No showcase elements attached.</div>
+                        <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                          No showcase elements attached.
+                        </div>
                       )}
                     </div>
-                 </div>
-               )}
+                 </TabsContent>
 
-               {activeTab === 'contracts' && (
-                 <div className="space-y-4">
+                 <TabsContent value="contracts" className="mt-6 flex flex-col gap-4">
                     {profile?.jobsAsFreelancer && profile.jobsAsFreelancer.length > 0 ? (
                       profile.jobsAsFreelancer.map((job: ActiveJob) => (
-                        <div key={job.id} className="bg-white rounded-3xl p-6 border border-l-4 border-l-blue-600 border-slate-100 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-widest rounded-md">{job.status}</span>
+                        <Card key={job.id} className="border-l-4 border-l-primary shadow-sm">
+                          <CardContent className="flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-center">
+                            <div className="flex flex-col gap-2">
+                              <div>
+                                <Badge variant="secondary">{job.status}</Badge>
+                              </div>
+                              <h3 className="text-lg font-bold tracking-tight text-foreground">{job.title}</h3>
                             </div>
-                            <h3 className="text-lg font-black text-slate-900 tracking-tight">{job.title}</h3>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xl font-black text-slate-900">₹{Number(job.budget).toLocaleString()}</p>
-                          </div>
-                        </div>
+                            <div className="shrink-0 text-left sm:text-right">
+                              <p className="text-2xl font-bold text-foreground">₹{Number(job.budget).toLocaleString()}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))
                     ) : (
-                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No operational contracts running currently.</div>
+                      <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                        No operational contracts running currently.
+                      </div>
                     )}
-                 </div>
-               )}
+                 </TabsContent>
 
-               {activeTab === 'proposals' && (
-                 <div className="space-y-4">
+                 <TabsContent value="proposals" className="mt-6 flex flex-col gap-4">
                     {profile?.proposals && profile.proposals.length > 0 ? (
                       profile.proposals.map((prop: Proposal) => (
-                        <div key={prop.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex justify-between items-center">
-                          <div>
-                            <h4 className="text-sm font-black text-slate-900 mb-1">{prop.job.title}</h4>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider mt-1 ${prop.status === 'ACCEPTED' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                              {prop.status}
-                            </span>
-                          </div>
-                        </div>
+                        <Card key={prop.id} className="shadow-sm">
+                          <CardContent className="flex items-center justify-between p-6">
+                            <h4 className="text-base font-bold text-foreground">{prop.job.title}</h4>
+                            <div className="shrink-0">
+                               <Badge variant={prop.status === 'ACCEPTED' ? 'default' : 'secondary'} className={prop.status === 'ACCEPTED' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
+                                 {prop.status}
+                               </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))
                     ) : (
-                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No active business inquiries placed.</div>
+                      <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                        No active business inquiries placed.
+                      </div>
                     )}
-                 </div>
-               )}
+                 </TabsContent>
 
-               {activeTab === 'reviews' && (
-                 <div className="space-y-4">
+                 <TabsContent value="reviews" className="mt-6 flex flex-col gap-4">
                     {profile?.reviewsRec && profile.reviewsRec.length > 0 ? (
                       profile.reviewsRec.map((review: Review) => (
-                        <div key={review.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3">
-                          <p className="text-xs text-slate-600 font-semibold italic">"{review.comment}"</p>
-                        </div>
+                        <Card key={review.id} className="shadow-sm">
+                          <CardContent className="p-6">
+                            <p className="text-sm font-medium italic text-muted-foreground">"{review.comment}"</p>
+                          </CardContent>
+                        </Card>
                       ))
                     ) : (
-                      <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed text-slate-400 text-xs font-bold uppercase tracking-widest">No verified client feedback compiled.</div>
+                      <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                        No verified client feedback compiled.
+                      </div>
                     )}
-                 </div>
-               )}
+                 </TabsContent>
+               </Tabs>
             </div>
 
             {/* Right Side Column Panels - Identity center integrated here */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="flex flex-col gap-6 lg:col-span-4">
                
                {/* HIGH-DENSITY INTERACTIVE TRUST BADGE SECURITY CENTER PANEL */}
-               <div className="bg-white p-6 border border-slate-100 rounded-3xl shadow-sm flex flex-col justify-between h-fit">
-                 <div>
-                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                     <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest">Identity Security</h3>
-                     <span className={`h-2 w-2 rounded-full ${profile?.account?.verifications?.isGlobalVerified ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-amber-400'}`} />
-                   </div>
-                   
-                   <div className="space-y-4">
-                     {/* Row: Email Validation Mapping */}
-                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+               <Card className="flex flex-col justify-between shadow-sm">
+                 <CardHeader className="flex flex-row items-center justify-between border-b p-6">
+                   <CardTitle className="text-sm uppercase tracking-widest">Identity Security</CardTitle>
+                   <span className={`size-2.5 rounded-full ${profile?.account?.verifications?.isGlobalVerified ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-amber-400'}`} />
+                 </CardHeader>
+                 
+                 <CardContent className="flex flex-col gap-4 p-6">
+                     <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
                        <div className="flex items-center gap-3">
-                         <Mail01 className={`size-5 ${profile?.account?.verifications?.isEmailVerified ? 'text-emerald-600' : 'text-slate-400'}`} />
-                         <div>
-                           <p className="text-xs font-bold text-slate-900">Email Verification</p>
-                           <p className="text-[11px] text-slate-500 truncate max-w-[130px]">{profile?.account?.email}</p>
+                         <Mail01 className={`size-5 ${profile?.account?.verifications?.isEmailVerified ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                         <div className="flex flex-col gap-0.5">
+                           <span className="text-sm font-semibold text-foreground">Email Verification</span>
+                           <span className="truncate text-xs text-muted-foreground max-w-[130px]">{profile?.account?.email}</span>
                          </div>
                        </div>
                        {profile?.account?.verifications?.isEmailVerified ? (
-                         <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                           <CheckCircle className="size-3" /> Secure
-                         </span>
+                         <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700">
+                           <CheckCircle className="size-3.5" /> Secure
+                         </Badge>
                        ) : (
-                         <button 
-                           onClick={handleRequestEmailOtp}
-                           disabled={actionLoading}
-                           className="text-[11px] font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition active:scale-95 whitespace-nowrap shadow-xs"
-                         >
+                         <Button size="sm" onClick={handleRequestEmailOtp} disabled={actionLoading}>
                            Verify
-                         </button>
+                         </Button>
                        )}
                      </div>
 
-                     {/* Row: SMS Phone Link Mapping */}
-                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                     <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
                        <div className="flex items-center gap-3">
-                         <span className="material-symbols-outlined text-lg text-slate-500">smartphone</span>
-                         <div>
-                           <p className="text-xs font-bold text-slate-900">Mobile SMS Link</p>
-                           <p className="text-[11px] text-slate-500">{profile?.account?.phoneNumber || "Unlinked"}</p>
+                         <span className="material-symbols-outlined text-[20px] text-muted-foreground">smartphone</span>
+                         <div className="flex flex-col gap-0.5">
+                           <span className="text-sm font-semibold text-foreground">Mobile SMS Link</span>
+                           <span className="text-xs text-muted-foreground">{profile?.account?.phoneNumber || "Unlinked"}</span>
                          </div>
                        </div>
                        {profile?.account?.verifications?.isPhoneNumberVerified ? (
-                         <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                           <CheckCircle className="size-3" /> Linked
-                         </span>
+                         <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700">
+                           <CheckCircle className="size-3.5" /> Linked
+                         </Badge>
                        ) : (
-                         <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                           <AlertCircle className="size-3" /> Pending
-                         </span>
+                         <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-700">
+                           <AlertCircle className="size-3.5" /> Pending
+                         </Badge>
                        )}
                      </div>
-                   </div>
-                 </div>
 
-                 {/* Toast Messages component panel layout */}
-                 {feedbackMessage.text && (
-                   <p className={`text-xs font-semibold mt-3 p-2 rounded-lg text-center ${feedbackMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
-                     {feedbackMessage.text}
-                   </p>
-                 )}
-               </div>
+                     {feedbackMessage.text && (
+                       <div className={`rounded-md p-3 text-center text-sm font-medium ${feedbackMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-destructive/10 text-destructive'}`}>
+                         {feedbackMessage.text}
+                       </div>
+                     )}
+                 </CardContent>
+               </Card>
 
-               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-8 pb-4 border-b border-slate-50">Operational Analytics</h3>
-                  <div className="space-y-6">
-                     <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Jobs Secured</p>
-                           <p className="text-2xl font-black text-slate-900">{profile?.workHistoryMetrics?.lifetimeJobsSecured || 0}</p>
+               <Card className="shadow-sm">
+                  <CardHeader className="border-b p-6">
+                    <CardTitle className="text-sm uppercase tracking-widest">Operational Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-6 p-6">
+                     <div className="flex items-end justify-between">
+                        <div className="flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Jobs Secured</span>
+                           <span className="text-2xl font-bold text-foreground">{profile?.workHistoryMetrics?.lifetimeJobsSecured || 0}</span>
                         </div>
-                        <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">task_alt</span>
-                     </div>
-                     <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Proposal Win Rate</p>
-                           <p className="text-2xl font-black text-blue-600">{profile?.proposalFunnelMetrics?.proposalWinRate || '0%'}</p>
+                        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <span className="material-symbols-outlined text-[20px]">task_alt</span>
                         </div>
-                        <span className="material-symbols-outlined text-purple-500 bg-purple-50 p-2 rounded-lg">trending_up</span>
                      </div>
-                     <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Client Feedback</p>
-                           <p className="text-2xl font-black text-green-600">{profile?.reputationScorecard?.totalReviewsCount || 0}</p>
+                     <div className="flex items-end justify-between">
+                        <div className="flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Proposal Win Rate</span>
+                           <span className="text-2xl font-bold text-primary">{profile?.proposalFunnelMetrics?.proposalWinRate || '0%'}</span>
                         </div>
-                        <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">reviews</span>
+                        <div className="flex size-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600">
+                          <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                        </div>
                      </div>
-                  </div>
-               </div>
+                     <div className="flex items-end justify-between">
+                        <div className="flex flex-col gap-1">
+                           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Client Feedback</span>
+                           <span className="text-2xl font-bold text-emerald-600">{profile?.reputationScorecard?.totalReviewsCount || 0}</span>
+                        </div>
+                        <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                          <span className="material-symbols-outlined text-[20px]">reviews</span>
+                        </div>
+                     </div>
+                  </CardContent>
+               </Card>
 
-               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6 pb-4 border-b border-slate-50">Financial Ledger</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-400">Gross Inflow Earnings</span>
-                      <span className="text-slate-800">₹{(profile?.earningsLedgerSummary?.lifetimeEarningsGross || 0).toLocaleString()}</span>
+               <Card className="shadow-sm">
+                  <CardHeader className="border-b p-6">
+                    <CardTitle className="text-sm uppercase tracking-widest">Financial Ledger</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-4 p-6">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-muted-foreground">Gross Inflow Earnings</span>
+                      <span className="text-foreground">₹{(profile?.earningsLedgerSummary?.lifetimeEarningsGross || 0).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-400">Platform Comm. Fees</span>
-                      <span className="text-red-500">- ₹{(profile?.earningsLedgerSummary?.lifetimePlatformFeesPaid || 0).toLocaleString()}</span>
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-muted-foreground">Platform Comm. Fees</span>
+                      <span className="text-destructive">- ₹{(profile?.earningsLedgerSummary?.lifetimePlatformFeesPaid || 0).toLocaleString()}</span>
                     </div>
-                    <hr className="border-slate-100" />
-                    <div className="flex justify-between text-sm font-black">
-                      <span className="text-slate-900">Net Take-Home Yield</span>
+                    <Separator />
+                    <div className="flex justify-between text-base font-bold">
+                      <span className="text-foreground">Net Take-Home Yield</span>
                       <span className="text-emerald-600">₹{(profile?.earningsLedgerSummary?.lifetimeNetTakeHome || 0).toLocaleString()}</span>
                     </div>
-                  </div>
-               </div>
+                  </CardContent>
+               </Card>
 
-               <div className="bg-[#0B1C30] p-10 rounded-3xl text-white shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl -mr-16 -mt-16"></div>
-                  <span className="material-symbols-outlined text-blue-400 text-5xl mb-6 flex group-hover:scale-110 transition-transform">auto_awesome</span>
-                  <h3 className="text-2xl font-black tracking-tight mb-3">Nomad Network</h3>
-                  <div className="mb-6">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Network Trust Rating</p>
-                    <h4 className="text-3xl font-black text-white tracking-tight flex items-baseline gap-1">
-                      {profile?.reputationScorecard?.nomadScore} <span className="text-xs font-medium text-slate-500">/ 100 PTS</span>
-                    </h4>
-                  </div>
-                  <p className="text-slate-400 text-sm font-semibold leading-relaxed mb-8">You are currently visible to top local clients within your verified coverage zone.</p>
-                  <Button color="secondary" className="w-full py-4 bg-white text-[#0B1C30] rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-white/5">
-                    View Network
-                  </Button>
-               </div>
+               <Card className="group relative overflow-hidden border-none bg-slate-900 text-white shadow-xl">
+                  <div className="absolute -mt-16 -mr-16 right-0 top-0 size-32 bg-primary/20 blur-3xl"></div>
+                  <CardContent className="flex flex-col p-8 sm:p-10">
+                    <span className="material-symbols-outlined mb-6 flex text-5xl text-primary transition-transform group-hover:scale-110">auto_awesome</span>
+                    <h3 className="mb-3 text-2xl font-bold tracking-tight">Nomad Network</h3>
+                    <div className="mb-6 flex flex-col gap-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Network Trust Rating</span>
+                      <h4 className="flex items-baseline gap-1 text-3xl font-bold tracking-tight text-white">
+                        {profile?.reputationScorecard?.nomadScore} <span className="text-xs font-medium text-slate-400">/ 100 PTS</span>
+                      </h4>
+                    </div>
+                    <p className="mb-8 text-sm font-medium leading-relaxed text-slate-300">You are currently visible to top local clients within your verified coverage zone.</p>
+                    <Button variant="secondary" size="lg" className="w-full tracking-widest uppercase">
+                      View Network
+                    </Button>
+                  </CardContent>
+               </Card>
             </div>
           </div>
         </div>
