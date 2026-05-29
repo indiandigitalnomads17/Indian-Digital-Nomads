@@ -1,133 +1,238 @@
 "use client";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation'; // FIXED: Added missing useRouter hook import
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import api from '@/lib/api';
 
-import React, { useState, useEffect } from "react";
-import api from "@/lib/api";
-import Navbar from "@/components/Navbar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/base/buttons/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-export default function BusinessesPage() {
-    const [businesses, setBusinesses] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
-    const [error, setError] = useState("");
+interface Business {
+  id: string;
+  businessName: string;
+  isVerified: boolean;
+  nomadScore: number;
+  joinedAt: string;
+  distanceAwayKm: number;
+  profile: {
+    bio: string | null;
+    profilePicLink: string | null;
+    bannerLink: string | null;
+    location: string | null;
+    latitude: number;
+    longitude: number;
+  } | null;
+  metrics: {
+    averageRating: number;
+    totalReviewCount: number;
+    activeOpenJobsCount: number;
+  };
+}
 
-    const fetchBusinesses = async (lat?: number, lng?: number) => {
-        setLoading(true);
-        try {
-            let url = "/api/v1/public/getPublicBuisnesses";
-            if (lat && lng) {
-                url += `?latitude=${lat}&longitude=${lng}&radius=50`;
-            } else {
-                // The API currently requires lat/long, if not present it returns 400. 
-                // We'll pass a default coordinate (e.g. Center of India) if user hasn't provided location.
-                url += `?latitude=20.5937&longitude=78.9629&radius=2000`;
-            }
-            const res = await api.get(url);
-            setBusinesses(res.data?.data || res.data || []);
-        } catch (err: any) {
-            console.error(err);
-            setError("Failed to load businesses.");
-        } finally {
-            setLoading(false);
-        }
-    };
+export default function BrowseBusinesses() {
+  const router = useRouter(); // FIXED: Initialized router hook instance inside the component
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<'prompt' | 'granted' | 'denied'>('prompt');
 
-    useEffect(() => {
-        fetchBusinesses();
-    }, []);
+  // Geospatial states required by your backend controller
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [radius, setRadius] = useState('11'); // Defaults to your 11km spec
 
-    const getLocation = () => {
-        if (!navigator.geolocation) {
-            setError("Geolocation is not supported by your browser");
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                setLocation({ lat: latitude, lng: longitude });
-                fetchBusinesses(latitude, longitude);
-            },
-            () => setError("Unable to retrieve your location")
-        );
-    };
+  // Core fetch mechanism
+  const fetchBusinesses = useCallback(async (lat: number, lon: number, currentRadius: string) => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('latitude', String(lat));
+      queryParams.append('longitude', String(lon));
+      queryParams.append('radius', currentRadius);
 
-    return (
-        <div className="min-h-screen bg-slate-50">
-            <Navbar />
-            <div className="pt-24 max-w-6xl mx-auto px-4 md:px-8 pb-12">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Browse Businesses</h1>
-                        <p className="text-slate-500 font-medium mt-1">Discover verified companies and clients hiring now.</p>
-                    </div>
-                    <Button onClick={getLocation} color="secondary" size="sm">
-                        <span className="material-symbols-outlined text-sm mr-2">my_location</span>
-                        Businesses Near Me
-                    </Button>
-                </div>
-                
-                {error && <p className="text-red-500 text-sm font-bold mb-4">{error}</p>}
+      const res = await api.get(`/api/v1/public/getPublicBuisnesses?${queryParams.toString()}`);
+      if (res.data?.success) {
+        setBusinesses(res.data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load local businesses:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[...Array(6)].map((_, i) => (
-                            <Skeleton key={i} className="h-44 rounded-xl" />
-                        ))}
-                    </div>
-                ) : businesses.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                        <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">storefront</span>
-                        <h3 className="text-lg font-black text-slate-900">No Businesses Found</h3>
-                        <p className="text-slate-500 text-sm mt-1">Try adjusting your location or check back later.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {businesses.map((business) => (
-                            <Card key={business.id} className="hover:shadow-lg transition-all border-slate-100 flex flex-col justify-between">
-                                <div>
-                                    <CardHeader className="pb-4">
-                                        <div className="flex justify-between items-start">
-                                            <CardTitle className="text-lg font-black text-slate-900">
-                                                {business.businessName || business.fullName}
-                                            </CardTitle>
-                                            {business.isVerified && (
-                                                <Badge variant="default" className="bg-blue-500">
-                                                    Verified
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                                            Joined {new Date(business.joinedAt).toLocaleDateString()}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-slate-600 line-clamp-2 mb-4 leading-relaxed">
-                                            {business.profile?.bio || "No description provided."}
-                                        </p>
-                                    </CardContent>
-                                </div>
-                                <div className="px-6 pb-6 pt-0">
-                                    <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest border-t border-slate-50 pt-4">
-                                        <div className="flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-sm">location_on</span>
-                                            {business.distanceAwayKm !== undefined && business.distanceAwayKm !== null
-                                                ? `${business.distanceAwayKm} km away`
-                                                : business.profile?.location || "Remote"}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-slate-500">
-                                            <span className="material-symbols-outlined text-sm">work</span>
-                                            {business.metrics?.activeOpenJobsCount || 0} Open Jobs
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
+  // Request browser coordinate triggers
+  const requestLocationAccess = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert("Your browser doesn't support location features.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude);
+        setLongitude(pos.coords.longitude);
+        setLocationStatus('granted');
+        fetchBusinesses(pos.coords.latitude, pos.coords.longitude, radius);
+      },
+      (err) => {
+        console.warn("Location check rejected:", err);
+        setLocationStatus('denied');
+      }
     );
+  }, [radius, fetchBusinesses]);
+
+  // Request automatically on mount
+  useEffect(() => {
+    requestLocationAccess();
+  }, [requestLocationAccess]);
+
+  // Refetch when the slider shifts the distance boundaries
+  const handleRadiusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newRadius = e.target.value;
+    setRadius(newRadius);
+    if (latitude && longitude) {
+      fetchBusinesses(latitude, longitude, newRadius);
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 space-y-6">
+        <header>
+          <h1 className="text-3xl font-extrabold tracking-tight">Local Businesses</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Discover nearby companies and clients looking for talent in your region.</p>
+        </header>
+
+        {locationStatus === 'granted' && (
+          /* TOP FILTER BAR */
+          <Card className="p-6 border shadow-sm bg-muted/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base">distance</span>
+                  Proximity Filter
+                </h3>
+                <p className="text-xs text-muted-foreground">Showing local businesses based on your coordinates.</p>
+              </div>
+              
+              <div className="flex items-center gap-4 bg-background border px-4 py-2 rounded-xl shadow-xs min-w-[280px] sm:min-w-[340px]">
+                <Label className="text-xs font-bold shrink-0 min-w-[110px]">Max Distance: {radius} km</Label>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="100" 
+                  step="5" 
+                  value={radius} 
+                  onChange={handleRadiusChange} 
+                  className="w-full accent-primary cursor-pointer" 
+                />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* CONTENT INTERFACE CONDITIONAL ROUTER */}
+        {locationStatus === 'prompt' && (
+          <div className="py-24 text-center text-sm font-medium text-muted-foreground animate-pulse">
+            Requesting proximity coordinates permission...
+          </div>
+        )}
+
+        {locationStatus === 'denied' && (
+          <Card className="border shadow-xs max-w-md mx-auto mt-12">
+            <CardContent className="p-8 text-center space-y-4">
+              <span className="material-symbols-outlined text-4xl text-amber-500 bg-amber-50 p-3 rounded-full border border-amber-200">location_off</span>
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-foreground">Location Access Required</h2>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This directory filters businesses dynamically within your local traveling area. Please allow location sharing to see nearby matches.
+                </p>
+              </div>
+              <Button onClick={requestLocationAccess} size="sm" className="w-full font-bold">
+                Share My Location
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {locationStatus === 'granted' && (
+          <div className="space-y-4 w-full">
+            {loading ? (
+              <div className="py-24 text-center text-sm font-medium text-muted-foreground">
+                Mapping nearby companies...
+              </div>
+            ) : businesses.length > 0 ? (
+              businesses.map((biz) => (
+                <Card key={biz.id} className="overflow-hidden border shadow-sm hover:shadow-md transition-all duration-200 w-full">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full">
+                      
+                      {/* Left Side Info Details */}
+                      <div className="flex flex-1 items-start gap-4 min-w-0 w-full">
+                        <Avatar className="size-16 border rounded-xl shrink-0 bg-background">
+                          <AvatarImage src={biz.profile?.profilePicLink || undefined} alt="" className="object-cover" />
+                          <AvatarFallback className="text-lg font-bold bg-primary/5 text-primary">
+                            {biz.businessName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-lg font-extrabold tracking-tight text-foreground truncate">{biz.businessName}</h2>
+                            {biz.isVerified && (
+                              <Badge className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 shrink-0">Verified</Badge>
+                            )}
+                            <Badge variant="secondary" className="text-[10px] font-bold shrink-0">Score: {biz.nomadScore}</Badge>
+                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold shrink-0">
+                              📍 {biz.distanceAwayKm} km away
+                            </Badge>
+                          </div>
+
+                          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm shrink-0">corporate_fare</span>
+                            <span>{biz.profile?.location || "Local Client Hub"}</span>
+                          </p>
+
+                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 pr-2">
+                            {biz.profile?.bio || "No business summary details listed by this employer."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right Side Statistics & Actions */}
+                      <div className="w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end shrink-0 gap-4 md:min-w-[160px]">
+                        <div className="space-y-1 text-left md:text-right">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Active Requests</span>
+                          <span className="text-lg font-black text-blue-600 block">
+                            {biz.metrics.activeOpenJobsCount} Open Jobs
+                          </span>
+                          <span className="text-xs text-amber-600 font-bold flex items-center md:justify-end gap-0.5">
+                            ★ {biz.metrics.averageRating || '0.0'} 
+                            <span className="text-muted-foreground font-normal">({biz.metrics.totalReviewCount})</span>
+                          </span>
+                        </div>
+
+                        <Button onClick={() => router.push(`/businesses/${biz.id}`)} size="sm" className="font-bold text-xs shrink-0 px-4">
+                          View Listings
+                        </Button>
+                      </div>
+
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-20 border-2 border-dashed rounded-xl font-medium text-muted-foreground bg-background">
+                No active businesses found within this distance radius threshold. Try sliding the bar to increase range.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 }
