@@ -890,41 +890,47 @@ const FreelancerProfile = () => {
                  )}
 
                  <TabsContent value="showcase" className="mt-6 flex flex-col gap-4">
-                    <div className="flex items-center justify-between rounded-xl border bg-background p-6 shadow-sm">
-                      <h2 className="text-xl font-bold text-foreground">Showcase</h2>
-                      <Button onClick={() => router.push('/freelancer/profile/add-project')} variant="secondary" size="sm" className="gap-2">
-                        <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project
-                      </Button>
-                    </div>
+  <div className="flex items-center justify-between rounded-xl border bg-background p-6 shadow-sm">
+    <h2 className="text-xl font-bold text-foreground">Showcase</h2>
+    <Button onClick={() => router.push('/freelancer/profile/add-project')} variant="secondary" size="sm" className="gap-2">
+      <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Add Project
+    </Button>
+  </div>
 
-                    <div className="flex flex-col gap-4">
-                      {profile?.portfolioStore?.currentBatch && profile.portfolioStore.currentBatch.length > 0 ? (
-                        profile.portfolioStore.currentBatch.map((project: Project) => (
-                          <Card key={project.id} className="group overflow-hidden transition-all hover:border-primary/50">
-                            <div className="flex flex-col sm:flex-row">
-                              <div className="relative h-40 w-full shrink-0 bg-muted sm:w-48 sm:h-auto">
-                                {project.images?.[0] ? (
-                                   <img src={project.images[0].url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> 
-                                ) : (
-                                   <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
-                                     <span className="material-symbols-outlined text-4xl">image</span>
-                                   </div>
-                                )}
-                              </div>
-                              <CardContent className="flex flex-1 flex-col justify-center p-6">
-                                <h3 className="mb-2 text-lg font-bold uppercase tracking-tight text-foreground">{project.title}</h3>
-                                <p className="line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
-                              </CardContent>
-                            </div>
-                          </Card>
-                        ))
-                      ) : (
-                        <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
-                          No showcase elements attached.
-                        </div>
-                      )}
-                    </div>
-                 </TabsContent>
+  <div className="flex flex-col gap-4">
+    {profile?.portfolioStore?.currentBatch && profile.portfolioStore.currentBatch.length > 0 ? (
+      profile.portfolioStore.currentBatch.map((project: Project) => (
+        <Card 
+          key={project.id} 
+          onClick={() => router.push(`/freelancer/profile/project/${project.id}`)}
+          className="group overflow-hidden transition-all hover:border-primary/50 cursor-pointer shadow-sm hover:shadow-md"
+        >
+          <div className="flex flex-col sm:flex-row">
+            <div className="relative h-40 w-full shrink-0 bg-muted sm:w-48 sm:h-auto">
+              {project.images?.[0] ? (
+                <img src={project.images[0].url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> 
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
+                  <span className="material-symbols-outlined text-4xl">image</span>
+                </div>
+              )}
+            </div>
+            <CardContent className="flex flex-1 flex-col justify-center p-6">
+              <h3 className="mb-2 text-lg font-bold uppercase tracking-tight text-foreground transition-colors group-hover:text-primary">
+                {project.title}
+              </h3>
+              <p className="line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
+            </CardContent>
+          </div>
+        </Card>
+      ))
+    ) : (
+      <div className="rounded-xl border-2 border-dashed p-12 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+        No showcase elements attached.
+      </div>
+    )}
+  </div>
+</TabsContent>
 
                  <TabsContent value="contracts" className="mt-6 flex flex-col gap-4">
                     {profile?.jobsAsFreelancer && profile.jobsAsFreelancer.length > 0 ? (

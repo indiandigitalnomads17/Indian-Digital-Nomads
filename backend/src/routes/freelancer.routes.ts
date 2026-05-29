@@ -2,7 +2,8 @@ import { Router } from "express";
 import { 
   addProject, 
   onboardFreelancer, getFreelancerProfileWithAllStats,getRecommendedJobs,
-  editProject,deleteProject } from "../controllers/freelancer.controller";
+  editProject,deleteProject, 
+  getProjectDetails} from "../controllers/freelancer.controller";
 import { protect} from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
 import { authorize } from "../middlewares/role.middleware";
@@ -32,6 +33,8 @@ router.post(
   ]),
   addProject
 );
+
+router.get("/project/:projectId", protect, authorize("FREELANCER"), getProjectDetails);
 
 router.patch(
   "/projects/:projectId",

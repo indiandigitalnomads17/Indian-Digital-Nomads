@@ -683,3 +683,51 @@ export const getFreelancerProfileWithAllStats = async (req: Request, res: Respon
     }
   }
 };
+
+export const getProjectDetails = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any)?.id;
+    
+    const { projectId } = req.params;
+
+    if (!projectId || typeof projectId !== 'string') {
+      return res.status(400).json({ success: false, error: "Invalid or malformed Project ID parameter." });
+    }
+
+    const userProfile = await prisma.profile.findUnique({ 
+      where: { userId } 
+    });
+    
+    if (!userProfile) {
+      return res.status(404).json({ success: false, error: "Freelancer profile not found" });
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId as string }, 
+      include: {
+        images: true,
+        skillsUsed: {
+          select: {
+            id: true,
+            name: true,
+            tier: true
+          }
+        }
+      }
+    });
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "Project milestone showcase item not found" });
+    }
+
+    if (project.profileId !== userProfile.id) {
+      return res.status(403).json({ success: false, error: "Unauthorized access to this portfolio asset" });
+    }
+
+    return res.status(200).json({ success: true, data: project });
+
+  } catch (error) {
+    console.error("Fetch Project Details Error:", error);
+    return res.status(500).json({ success: false, error: "Failed to retrieve project parameters" });
+  }
+};
