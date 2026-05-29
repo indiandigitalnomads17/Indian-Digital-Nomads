@@ -77,8 +77,9 @@ export const analyzeUserProjectVideo = async (req: Request, res: Response) => {
       filePath: temporaryAudioPath,
       rawTitle,
       existingSkills: skillTreeHierarchy 
+      
     });
-
+    console.log("Structured Project Profile from Groq:", structuredProjectProfile);
     // 5. Send data back to front-end to auto-populate the user's portfolio form/profile
     return res.status(200).json({
       success: true,
